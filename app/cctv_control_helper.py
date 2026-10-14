@@ -22,7 +22,10 @@ except (OSError, ValueError):
     CONFIG = {}
 
 RECORDINGS = Path(CONFIG.get("recordings_root", "/var/lib/motion"))
-QUARANTINE = Path(CONFIG.get("quarantine_root", "/var/lib/cctv-control/quarantine"))
+# Quarantine lives inside the recordings tree so moves are same-mount renames: the helper's
+# systemd sandbox gives each ReadWritePaths entry its own bind mount, and rename() across
+# mounts fails with EXDEV even on the same disk. Hidden top-level dirs are never listed.
+QUARANTINE = Path(CONFIG.get("quarantine_root", str(RECORDINGS / ".cctv-quarantine")))
 SOCKET_PATH = Path(CONFIG.get("helper_socket", "/run/cctv-control/control.sock"))
 LOCK_PATH = Path("/run/cctv-control/mutate.lock")
 CAMERA = Path(CONFIG.get("camera_device", "/dev/video0"))
@@ -60,7 +63,7 @@ def recording_files() -> list[Path]:
     if not RECORDINGS.is_dir() or RECORDINGS.is_symlink():
         return files
     for base, dirs, names in os.walk(RECORDINGS, followlinks=False):
-        dirs[:] = [name for name in dirs if not Path(base, name).is_symlink()]
+        dirs[:] = [name for name in dirs if not name.startswith(".") and not Path(base, name).is_symlink()]
         for name in names:
             path = Path(base, name)
             if path.suffix.lower() in MEDIA_EXTENSIONS and not path.is_symlink() and path.is_file():
@@ -105,8 +108,12 @@ def move_to_batch(path: Path, batch: Path) -> str:
 
 def remove_empty_recording_dirs() -> None:
     for base, dirs, _ in os.walk(RECORDINGS, topdown=False, followlinks=False):
+        if any(part.startswith(".") for part in Path(base).relative_to(RECORDINGS).parts):
+            continue
         for name in dirs:
             path = Path(base, name)
+            if name.startswith("."):
+                continue
             try:
                 if not path.is_symlink():
                     path.rmdir()
@@ -116,10 +123,12 @@ def remove_empty_recording_dirs() -> None:
 
 def quarantine_one(relative: str) -> dict:
     path = safe_relative(relative, RECORDINGS)
+    if any(part.startswith(".") for part in path.relative_to(RECORDINGS).parts):
+        raise ValueError("Recording not found")
     if not path.is_file() or path.suffix.lower() not in MEDIA_EXTENSIONS:
         raise ValueError("Recording not found")
     if is_open(path) or time.time() - path.stat().st_mtime < 180:
-        raise ValueError("Recording is still active; wait for the event to finish")
+        raise ValueError("This clip is still being recorded; try again when the event ends")
     batch = new_batch()
     item_id = move_to_batch(path, batch)
     remove_empty_recording_dirs()

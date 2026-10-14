@@ -47,6 +47,20 @@ class SecurityBoundaryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 helper.safe_relative("link.mkv", root)
 
+    def test_recording_files_skip_hidden_quarantine(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "cam").mkdir()
+            (root / "cam" / "clip.mkv").touch()
+            (root / ".cctv-quarantine" / "batch" / "cam").mkdir(parents=True)
+            (root / ".cctv-quarantine" / "batch" / "cam" / "old.mkv").touch()
+            original = helper.RECORDINGS
+            helper.RECORDINGS = root
+            try:
+                self.assertEqual([p.name for p in helper.recording_files()], ["clip.mkv"])
+            finally:
+                helper.RECORDINGS = original
+
 
 if __name__ == "__main__":
     unittest.main()

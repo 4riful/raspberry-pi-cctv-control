@@ -123,6 +123,7 @@ button, input { font: inherit; color: inherit; }
 .recs .f { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .recs .n { width: 1%; text-align: right; }
 .recs td.n { color: var(--dim); }
+.recs tr.live td.n { color: var(--red); }
 .recs .a { padding: 0 4px; }
 .recs .a .ib { min-width: 30px; height: 30px; }
 .recs .a .ib .icon { width: 15px; height: 15px; }

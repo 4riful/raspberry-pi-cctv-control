@@ -224,7 +224,15 @@ function renderMore() {
     const remove = iconButton("button", "danger", "trash", "Move to quarantine");
     remove.type = "button";
     remove.dataset.remove = index;
-    row.append(cell("d", ymd(when)), cell("t", hms(when)), file, cell("n", formatBytes(item.bytes)), cell("n a", [play, download, remove]));
+    // The helper refuses clips touched in the last 3 minutes; show that instead of a failing button.
+    const active = Date.now() / 1000 - item.modified < 180;
+    if (active) {
+      remove.disabled = true;
+      remove.title = "Still recording; can be removed when the event ends";
+      row.classList.add("live");
+    }
+    const size = cell("n", active ? "● rec" : formatBytes(item.bytes));
+    row.append(cell("d", ymd(when)), cell("t", hms(when)), file, size, cell("n a", [play, download, remove]));
     fragment.append(row);
   });
   $("#recording-list").append(fragment);

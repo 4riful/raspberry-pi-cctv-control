@@ -135,7 +135,7 @@ class App:
 
     def media_path(self, media_id: str) -> Path:
         relative = Path(decode_id(media_id))
-        if relative.is_absolute() or ".." in relative.parts:
+        if relative.is_absolute() or any(part == ".." or part.startswith(".") for part in relative.parts):
             raise ValueError("Invalid recording identifier")
         candidate = self.recordings_root.joinpath(relative)
         if candidate.is_symlink() or not candidate.is_file():
@@ -152,7 +152,8 @@ class App:
         total_bytes = 0
         if self.recordings_root.is_dir() and not self.recordings_root.is_symlink():
             for base, dirs, files in os.walk(self.recordings_root, followlinks=False):
-                dirs[:] = [name for name in dirs if not Path(base, name).is_symlink()]
+                # Hidden dirs (the quarantine) are not recordings.
+                dirs[:] = [name for name in dirs if not name.startswith(".") and not Path(base, name).is_symlink()]
                 for name in files:
                     path = Path(base, name)
                     if path.suffix.lower() not in MEDIA_EXTENSIONS or path.is_symlink():

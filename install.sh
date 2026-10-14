@@ -253,7 +253,7 @@ with open(path, 'w') as handle:
     json.dump({
         'listen_host': address, 'listen_port': 8443,
         'web_root': '/opt/cctv-control/web', 'recordings_root': '/var/lib/motion',
-        'quarantine_root': '/var/lib/cctv-control/quarantine',
+        'quarantine_root': '/var/lib/motion/.cctv-quarantine',
         'credentials_file': '/etc/cctv-control/credentials.json',
         'cert_file': '/etc/cctv-control/tls.crt', 'key_file': '/etc/cctv-control/tls.key',
         'helper_socket': '/run/cctv-control/control.sock', 'camera_device': camera,
