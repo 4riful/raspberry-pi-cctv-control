@@ -12,3 +12,4 @@ __pycache__/
 screenshots/
 test-output/
 dist/
+.impeccable/review/

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-14T18:20:11Z",
+  "title": "Design System: CCTV Control",
+  "extensions": {
+    "colorMeta": {
+      "cool-field": { "role": "neutral", "displayName": "Cool Field", "canonical": "#f3f5f3", "tonalRamp": ["oklch(15% 0.006 150)", "oklch(27% 0.006 150)", "oklch(39% 0.006 150)", "oklch(51% 0.006 150)", "oklch(63% 0.006 150)", "oklch(75% 0.006 150)", "oklch(87% 0.006 150)", "oklch(95% 0.006 150)"] },
+      "white-panel": { "role": "neutral", "displayName": "White Panel", "canonical": "#ffffff", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(100% 0 0)"] },
+      "charcoal-ink": { "role": "neutral", "displayName": "Charcoal Ink", "canonical": "#18201c", "tonalRamp": ["oklch(15% 0.012 155)", "oklch(27% 0.012 155)", "oklch(39% 0.012 155)", "oklch(51% 0.012 155)", "oklch(63% 0.012 155)", "oklch(75% 0.012 155)", "oklch(87% 0.012 155)", "oklch(95% 0.012 155)"] },
+      "quiet-ink": { "role": "neutral", "displayName": "Quiet Ink", "canonical": "#65706a", "tonalRamp": ["oklch(15% 0.014 155)", "oklch(27% 0.014 155)", "oklch(39% 0.014 155)", "oklch(51% 0.014 155)", "oklch(63% 0.014 155)", "oklch(75% 0.014 155)", "oklch(87% 0.014 155)", "oklch(95% 0.014 155)"] },
+      "fine-rule": { "role": "neutral", "displayName": "Fine Rule", "canonical": "#d7dcd8", "tonalRamp": ["oklch(15% 0.009 150)", "oklch(27% 0.009 150)", "oklch(39% 0.009 150)", "oklch(51% 0.009 150)", "oklch(63% 0.009 150)", "oklch(75% 0.009 150)", "oklch(87% 0.009 150)", "oklch(95% 0.009 150)"] },
+      "recording-green": { "role": "primary", "displayName": "Recording Green", "canonical": "#176b43", "tonalRamp": ["oklch(15% 0.08 155)", "oklch(27% 0.11 155)", "oklch(39% 0.13 155)", "oklch(51% 0.13 155)", "oklch(63% 0.11 155)", "oklch(75% 0.08 155)", "oklch(87% 0.05 155)", "oklch(95% 0.025 155)"] },
+      "recording-green-soft": { "role": "primary", "displayName": "Recording Green Soft", "canonical": "#e4f2e9", "tonalRamp": ["oklch(15% 0.035 155)", "oklch(27% 0.04 155)", "oklch(39% 0.04 155)", "oklch(51% 0.04 155)", "oklch(63% 0.035 155)", "oklch(75% 0.03 155)", "oklch(87% 0.025 155)", "oklch(95% 0.018 155)"] },
+      "warning-amber": { "role": "secondary", "displayName": "Warning Amber", "canonical": "#8b4b08", "tonalRamp": ["oklch(15% 0.08 65)", "oklch(27% 0.11 65)", "oklch(39% 0.13 65)", "oklch(51% 0.13 65)", "oklch(63% 0.11 65)", "oklch(75% 0.08 65)", "oklch(87% 0.05 65)", "oklch(95% 0.025 65)"] },
+      "warning-amber-soft": { "role": "secondary", "displayName": "Warning Amber Soft", "canonical": "#fff3dc", "tonalRamp": ["oklch(15% 0.04 75)", "oklch(27% 0.05 75)", "oklch(39% 0.06 75)", "oklch(51% 0.06 75)", "oklch(63% 0.05 75)", "oklch(75% 0.04 75)", "oklch(87% 0.03 75)", "oklch(95% 0.025 75)"] },
+      "fault-red": { "role": "tertiary", "displayName": "Fault Red", "canonical": "#a12a24", "tonalRamp": ["oklch(15% 0.09 28)", "oklch(27% 0.13 28)", "oklch(39% 0.16 28)", "oklch(51% 0.16 28)", "oklch(63% 0.13 28)", "oklch(75% 0.09 28)", "oklch(87% 0.055 28)", "oklch(95% 0.025 28)"] },
+      "fault-red-soft": { "role": "tertiary", "displayName": "Fault Red Soft", "canonical": "#fbe9e7", "tonalRamp": ["oklch(15% 0.035 28)", "oklch(27% 0.045 28)", "oklch(39% 0.05 28)", "oklch(51% 0.05 28)", "oklch(63% 0.045 28)", "oklch(75% 0.035 28)", "oklch(87% 0.025 28)", "oklch(95% 0.018 28)"] },
+      "focus-blue": { "role": "secondary", "displayName": "Focus Blue", "canonical": "#126b95", "tonalRamp": ["oklch(15% 0.08 235)", "oklch(27% 0.11 235)", "oklch(39% 0.13 235)", "oklch(51% 0.13 235)", "oklch(63% 0.11 235)", "oklch(75% 0.08 235)", "oklch(87% 0.05 235)", "oklch(95% 0.025 235)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Recording State", "purpose": "The single live recording-state statement." },
+      "headline": { "displayName": "Section Headline", "purpose": "Major operational sections such as recent recordings." },
+      "title": { "displayName": "Contained Title", "purpose": "Dialog and contained-action headings." },
+      "body": { "displayName": "Operational Body", "purpose": "Explanations, warnings, and confirmation copy." },
+      "label": { "displayName": "Control Label", "purpose": "Controls, fields, compact facts, and statuses." }
+    },
+    "shadows": [
+      { "name": "state-halo", "value": "0 0 0 0.4rem var(--green-soft)", "purpose": "Matching semantic halo around the primary state lamp." },
+      { "name": "dialog-lift", "value": "0 1.5rem 4rem rgba(0, 0, 0, 0.24)", "purpose": "Blocking confirmation dialogs only." },
+      { "name": "toast-lift", "value": "0 0.8rem 2rem rgba(0, 0, 0, 0.2)", "purpose": "Transient feedback above the operating plane." }
+    ],
+    "motion": [
+      { "name": "state-change", "value": "200ms ease-out", "purpose": "Power-control inversion, lift, and disclosure-chevron rotation." },
+      { "name": "pending-pulse", "value": "1200ms ease-in-out infinite", "purpose": "Amber state-lamp pulse while a command is pending; suppressed for reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "720px" },
+      { "name": "narrow", "value": "430px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The dark, compact action used for sign-in and primary contained actions.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Sign in</button>",
+      "css": ".ds-btn-primary { min-height: 2.8rem; display: inline-flex; align-items: center; justify-content: center; padding: .65rem 1rem; border: 1px solid var(--ink); border-radius: .4rem; color: #fff; background: var(--ink); cursor: pointer; font: 800 .85rem/1.35 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-btn-primary:hover { border-color: var(--green); background: var(--green); } .ds-btn-primary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A quiet bordered action for maintenance, restoration, and cancellation.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Refresh</button>",
+      "css": ".ds-btn-secondary { min-height: 2.8rem; display: inline-flex; align-items: center; justify-content: center; padding: .65rem 1rem; border: 1px solid var(--line); border-radius: .4rem; color: var(--ink); background: var(--panel); cursor: pointer; font: 800 .85rem/1.35 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-btn-secondary:hover { color: #fff; border-color: var(--ink); background: var(--ink); } .ds-btn-secondary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-btn-secondary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "A fault-red confirmed action for destructive operations.",
+      "html": "<button class=\"ds-btn-danger\" type=\"button\">Quarantine everything</button>",
+      "css": ".ds-btn-danger { min-height: 2.8rem; display: inline-flex; align-items: center; justify-content: center; padding: .65rem 1rem; border: 1px solid var(--red); border-radius: .4rem; color: #fff; background: var(--red); cursor: pointer; font: 800 .85rem/1.35 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-btn-danger:hover { filter: brightness(.92); } .ds-btn-danger:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-btn-danger:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The white, fine-rule field used for credentials and typed confirmations.",
+      "html": "<label class=\"ds-field-label\" for=\"ds-field\">Username</label><input class=\"ds-field\" id=\"ds-field\" autocomplete=\"off\">",
+      "css": ".ds-field-label { display: block; margin-bottom: .55rem; color: var(--ink); font: 700 .85rem/1.35 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-field { width: 100%; min-height: 3rem; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: .45rem; color: var(--ink); background: var(--panel); caret-color: var(--green); font: 1rem/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-field:hover { border-color: var(--muted); } .ds-field:focus { border-color: var(--focus); } .ds-field:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Lamp",
+      "kind": "custom",
+      "description": "The circular state signal that summarizes recorder health without a badge.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-status-lamp\" aria-hidden=\"true\"></span><strong>Recording on</strong></span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 1rem; color: var(--ink); font: 700 1rem/1.2 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-status-lamp { width: .8rem; height: .8rem; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 .4rem var(--green-soft); } .ds-status:focus-within { outline: 3px solid var(--focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Power Control",
+      "kind": "button",
+      "refersTo": "power-control",
+      "description": "The signature circular control for starting or stopping recording without powering off the Pi.",
+      "html": "<button class=\"ds-power\" type=\"button\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3v9M7.1 5.8a8 8 0 1 0 9.8 0\"/></svg><strong>Turn CCTV off</strong><small>Raspberry Pi stays on</small></button>",
+      "css": ".ds-power { width: 12rem; min-height: 12rem; display: grid; place-items: center; align-content: center; gap: .65rem; padding: 1rem; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--panel); cursor: pointer; text-align: center; transition: transform .2s ease-out, background .2s ease-out, color .2s ease-out; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-power svg { width: 2.4rem; height: 2.4rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; } .ds-power strong { font-weight: 850; } .ds-power small { max-width: 12ch; color: var(--muted); font-size: .72rem; line-height: 1.35; } .ds-power:hover { transform: translateY(-2px); color: #fff; background: var(--ink); } .ds-power:hover small { color: inherit; } .ds-power:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-power:active { transform: translateY(0); }"
+    },
+    {
+      "name": "Warning Alert",
+      "kind": "custom",
+      "description": "A full-width amber plane reserved for actionable system warnings.",
+      "html": "<div class=\"ds-alert\" role=\"alert\"><strong>Storage reserve</strong><span>Free space is below 8 GiB. Run cleanup and move recordings off the microSD.</span></div>",
+      "css": ".ds-alert { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem; padding: .85rem 1rem; color: #603506; background: var(--amber-soft); font: 1rem/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-alert strong { font-size: .8rem; } .ds-alert:focus-within { outline: 3px solid var(--focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "description": "A quiet sticky header line joining identity, live status, and session exit.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"CCTV Control\"><a href=\"#\">CCTV Control</a><span class=\"ds-nav-status\"><i aria-hidden=\"true\"></i>Recording on</span><button type=\"button\">Sign out</button></nav>",
+      "css": ".ds-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 4rem; padding: .6rem 1.5rem; border-bottom: 1px solid var(--line); color: var(--ink); background: rgba(243,245,243,.96); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-nav a { color: var(--ink); font-weight: 800; text-decoration: none; letter-spacing: -.015em; } .ds-nav-status { display: inline-flex; align-items: center; gap: .5rem; font-size: .82rem; font-weight: 700; } .ds-nav-status i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--green); } .ds-nav button { justify-self: end; min-height: 2.5rem; padding: .35rem 0; border: 0; border-bottom: 1px solid transparent; color: var(--ink); background: transparent; cursor: pointer; font-weight: 750; } .ds-nav a:hover, .ds-nav button:hover { border-bottom-color: currentColor; } .ds-nav a:focus-visible, .ds-nav button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Recorder Wall Control",
+    "overview": "CCTV Control behaves like a precise architectural faceplate: one unmistakable operating state, one tactile primary control, and supporting facts arranged with quiet discipline. The mood is calm, dependable, and utilitarian without becoming industrial theater. A matte cool-white field, charcoal type, fine rules, and compact native system typography keep the interface fast and credible on a resource-constrained device.\n\nHealthy information recedes; recording state and actionable warnings surface immediately. Green communicates confirmed operation, while amber and red appear only when the system requires attention or an action is destructive. Flat planes and open spacing replace dashboard cards, gauges, decorative metaphor, and equal-weight controls.",
+    "keyCharacteristics": [
+      "Matte cool-white field with crisp white controls",
+      "Oversized, tightly set recording state",
+      "Circular status lamps and one circular primary control",
+      "Fine structural rules instead of card containers",
+      "Sparse, semantic green, amber, and red",
+      "Progressive disclosure for maintenance and diagnostics"
+    ],
+    "rules": [
+      { "name": "The Semantic Color Rule", "body": "Green means confirmed operation, amber means attention or unknown, red means stopped, destructive, or failed, and blue means keyboard focus; never use them as decoration.", "section": "colors" },
+      { "name": "The Quiet Health Rule", "body": "Healthy diagnostics stay neutral except for small status indicators or values where confirmation is useful; warnings may claim a full-width tinted plane.", "section": "colors" },
+      { "name": "The One Loud Sentence Rule", "body": "Reserve display scale for the current recording state; no secondary metric competes at that size.", "section": "typography" },
+      { "name": "The Plain Label Rule", "body": "Use sentence case and direct language rather than all-caps commands, jargon, or metaphorical names.", "section": "typography" },
+      { "name": "The Open Plane Rule", "body": "Use spacing and rules to group content; do not introduce a dashboard wall of separate cards.", "section": "layout" },
+      { "name": "The Flat-Until-Interrupted Rule", "body": "Resting page surfaces have no shadow; only state lamps, modal dialogs, and transient toasts may lift or glow.", "section": "elevation" },
+      { "name": "The One Circle Rule", "body": "Large circular geometry belongs to the primary recording control; supporting circles remain tiny status indicators.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do make recording state the clearest sentence and the recording power control the clearest action.",
+      "Do distinguish stopping CCTV from powering off the Raspberry Pi in adjacent plain language.",
+      "Do use fine rules, spacing, and disclosure to organize dense operational information.",
+      "Do preserve visible keyboard focus, semantic status announcements, mobile touch targets, and reduced-motion behavior.",
+      "Do keep destructive actions deliberate, fault-red, confirmed, and visibly recoverable through quarantine."
+    ],
+    "donts": [
+      "Don't use semantic green, amber, red, or focus blue as decorative accent colors.",
+      "Don't turn diagnostics, recordings, or maintenance actions into an equal-weight grid of cards or gauges.",
+      "Don't add decorative CCTV imagery, gradients, glass effects, or ornamental metaphor.",
+      "Don't let maintenance and logs occupy the first view when the user has not requested them.",
+      "Don't animate continuously except for the bounded pending-state pulse, and suppress that pulse when reduced motion is requested."
+    ]
+  }
+}

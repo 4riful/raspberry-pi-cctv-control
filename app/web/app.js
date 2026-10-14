@@ -48,7 +48,6 @@ function showLogin() {
 function showApp() {
   $("#login-view").hidden = true;
   $("#app-view").hidden = false;
-  updateClock();
   refreshAll();
   clearInterval(state.timer);
   state.timer = setInterval(refreshStatus, 15000);
@@ -63,21 +62,14 @@ function toast(message, error = false) {
   element.hideTimer = setTimeout(() => { element.hidden = true; }, 5000);
 }
 
-function updateClock() {
-  const now = new Date();
-  $("#clock").textContent = now.toLocaleTimeString([], { hour12: true });
-  $("#today").textContent = now.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-}
-setInterval(updateClock, 1000);
-
 function setBusy(busy, label = "Dispatching command") {
   state.busy = busy;
   document.body.classList.toggle("busy", busy);
-  ["#start-button", "#stop-button", "#quick-power-button", "#restart-button", "#retention-button", "#refresh-button", "#delete-all-button"].forEach((id) => { $(id).disabled = busy; });
+  ["#quick-power-button", "#restart-button", "#retention-button", "#refresh-button", "#delete-all-button"].forEach((id) => { $(id).disabled = busy; });
   if (busy) {
     $("#header-state").textContent = label;
     $("#primary-state").textContent = "Pending";
-    $("#primary-state").className = "state-flag unknown";
+    $("#primary-state").className = "visually-hidden";
   }
 }
 
@@ -94,11 +86,12 @@ function renderStatus(data) {
   const healthy = serviceLive && data.camera && data.dashboard;
   const degraded = serviceLive && !healthy;
   const mode = healthy ? "live" : degraded ? "degraded" : "stopped";
-  const label = healthy ? "Recording available" : degraded ? "Service degraded" : "Recording stopped";
+  const label = healthy ? "Recording on" : degraded ? "Needs attention" : "Recording off";
   $("#header-dot").className = `status-dot ${mode}`;
   $("#header-state").textContent = label;
-  $("#primary-state").className = `state-flag ${mode}`;
-  $("#primary-state").textContent = healthy ? "In service" : degraded ? "Degraded" : "Stopped";
+  $("#state-lamp").className = `state-lamp ${mode}`;
+  $("#primary-state").textContent = healthy ? "Recorder active" : degraded ? "Attention needed" : "Recorder stopped";
+  $("#overview-title").textContent = healthy ? "Recording is on" : degraded ? "Recording needs attention" : "Recording is off";
   $("#service-detail").textContent = healthy
     ? "Camera, recorder, and local dashboard are responding."
     : serviceLive ? "The recorder is running, but one or more checks require attention." : "The CCTV service is not recording. Start it when ready.";
@@ -108,8 +101,6 @@ function renderStatus(data) {
   markStage("storage", data.disk.free >= 8 * 1024 ** 3, `${formatBytes(data.disk.free)} free`);
   const timersGood = Object.values(data.timers).every((value) => value === "active");
   markStage("retention", timersGood, timersGood ? "Timers active" : "Timer fault");
-  document.querySelector('[data-stage="access"]').classList.add("live");
-
   const warnings = [];
   if (data.power !== "throttled=0x0") warnings.push(["Power warning", `${data.power}. Undervoltage can corrupt recordings or stop USB devices; software cannot repair the power supply.`]);
   if (!data.camera) warnings.push(["Camera missing", "Check the camera USB connection and power before restarting services."]);
@@ -128,12 +119,10 @@ function renderStatus(data) {
   $("#diag-uptime").textContent = formatDuration(data.uptime);
   $("#diag-health").textContent = timersGood ? "All timers active" : Object.entries(data.timers).map(([name, value]) => `${name}: ${value}`).join(" · ");
   $("#diag-quarantine").textContent = `${data.quarantine.count} files · ${formatBytes(data.quarantine.bytes)}`;
-  $("#start-button").disabled = state.busy || serviceLive;
-  $("#stop-button").disabled = state.busy || !serviceLive;
   const quickPower = $("#quick-power-button");
   quickPower.disabled = state.busy;
   quickPower.dataset.mode = serviceLive ? "stop" : "start";
-  quickPower.className = `quick-power ${serviceLive ? "stop" : "start"}`;
+  quickPower.className = `power-control ${serviceLive ? "stop" : "start"}`;
   quickPower.querySelector("span").textContent = serviceLive ? "Turn CCTV off" : "Turn CCTV on";
   $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString([], { hour12: true })}`;
   renderQuarantine(data.quarantine);
@@ -250,9 +239,7 @@ $("#logout-button").addEventListener("click", async () => {
   state.csrf = null;
   showLogin();
 });
-$("#start-button").addEventListener("click", () => action("start", "Starting recording line"));
 const confirmStop = () => askConfirm({ title: "Turn CCTV off?", copy: "This stops the camera and motion recording service. The control portal and Raspberry Pi stay powered on.", confirmLabel: "Turn CCTV off", callback: () => action("stop", "Turning CCTV off") });
-$("#stop-button").addEventListener("click", confirmStop);
 $("#quick-power-button").addEventListener("click", () => {
   if ($("#quick-power-button").dataset.mode === "start") action("start", "Turning CCTV on");
   else confirmStop();
