@@ -25,13 +25,23 @@ from urllib.parse import unquote, urlparse
 
 MAX_BODY = 16 * 1024
 MEDIA_EXTENSIONS = {".mkv", ".mp4", ".avi", ".jpg", ".jpeg"}
-SESSION_TTL = 8 * 60 * 60
+SESSION_TTL = 30 * 24 * 60 * 60
+SESSION_SAVE_SLACK = 60 * 60
 LOGIN_WINDOW = 15 * 60
 LOGIN_LIMIT = 5
 
 
 def b64_id(value: str) -> str:
     return base64.urlsafe_b64encode(value.encode()).decode().rstrip("=")
+
+
+def token_key(token: str) -> str:
+    # Sessions are stored by token hash so the on-disk file never holds a usable cookie.
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def session_cookie(token: str, max_age: int = SESSION_TTL) -> str:
+    return f"cctv_session={token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age={max_age}"
 
 
 def decode_id(value: str) -> str:
@@ -50,9 +60,40 @@ class App:
         self.web_root = Path(self.config["web_root"]).resolve()
         self.recordings_root = Path(self.config["recordings_root"]).resolve()
         self.credentials = json.loads(Path(self.config["credentials_file"]).read_text())
+        self.session_file = Path(self.config.get("session_file", "/var/lib/cctv-control-web/sessions.json"))
         self.sessions: dict[str, Session] = {}
+        self.saved_expiry: dict[str, float] = {}
         self.failures: dict[str, list[float]] = {}
         self.lock = threading.Lock()
+        self.load_sessions()
+
+    def load_sessions(self) -> None:
+        try:
+            raw = json.loads(self.session_file.read_text())
+        except (OSError, ValueError):
+            return
+        now = time.time()
+        for key, row in raw.items() if isinstance(raw, dict) else ():
+            try:
+                session = Session(csrf=str(row["csrf"]), expires=float(row["expires"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if session.expires > now:
+                self.sessions[key] = session
+                self.saved_expiry[key] = session.expires
+
+    def save_sessions(self) -> None:
+        """Persist sessions so restarts and deploys do not sign the operator out. Caller holds the lock."""
+        now = time.time()
+        self.sessions = {k: v for k, v in self.sessions.items() if v.expires > now}
+        data = {k: {"csrf": v.csrf, "expires": v.expires} for k, v in self.sessions.items()}
+        try:
+            temp = self.session_file.with_suffix(".tmp")
+            temp.write_text(json.dumps(data, separators=(",", ":")))
+            os.replace(temp, self.session_file)
+            self.saved_expiry = {k: v.expires for k, v in self.sessions.items()}
+        except OSError:
+            pass  # Fall back to memory-only sessions if the state directory is unavailable.
 
     def prune(self) -> None:
         now = time.time()
@@ -190,12 +231,17 @@ class ControlHandler(BaseHTTPRequestHandler):
         if not morsel:
             return None
         token = morsel.value
+        key = token_key(token)
         with self.app.lock:
-            session = self.app.sessions.get(token)
+            session = self.app.sessions.get(key)
             if not session or session.expires <= time.time():
-                self.app.sessions.pop(token, None)
+                if self.app.sessions.pop(key, None):
+                    self.app.save_sessions()
                 return None
             session.expires = time.time() + SESSION_TTL
+            # Sliding expiry: only rewrite the file when it has drifted, to avoid a disk write per request.
+            if session.expires - self.app.saved_expiry.get(key, 0) > SESSION_SAVE_SLACK:
+                self.app.save_sessions()
         return token, session
 
     def require_session(self, csrf: bool = False) -> tuple[str, Session] | None:
@@ -234,7 +280,14 @@ class ControlHandler(BaseHTTPRequestHandler):
             self.end_headers()
         elif path == "/api/session":
             current = self.session()
-            self.json_response({"ok": True, "authenticated": bool(current), "csrf": current[1].csrf if current else None})
+            body = json.dumps({"ok": True, "authenticated": bool(current), "csrf": current[1].csrf if current else None}).encode()
+            self.send_response(HTTPStatus.OK)
+            if current:
+                self.send_header("Set-Cookie", session_cookie(current[0]))  # renew the 30-day cookie on each visit
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif path == "/api/status":
             if not self.require_session():
                 return
@@ -332,9 +385,10 @@ class ControlHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/logout":
             with self.app.lock:
-                self.app.sessions.pop(current[0], None)
+                self.app.sessions.pop(token_key(current[0]), None)
+                self.app.save_sessions()
             self.send_response(HTTPStatus.OK)
-            self.send_header("Set-Cookie", "cctv_session=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0")
+            self.send_header("Set-Cookie", session_cookie("", 0))
             body = b'{"ok":true}'
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -390,10 +444,11 @@ class ControlHandler(BaseHTTPRequestHandler):
         csrf = secrets.token_urlsafe(24)
         with self.app.lock:
             self.app.failures.pop(ip, None)
-            self.app.sessions[token] = Session(csrf=csrf, expires=time.time() + SESSION_TTL)
+            self.app.sessions[token_key(token)] = Session(csrf=csrf, expires=time.time() + SESSION_TTL)
+            self.app.save_sessions()
         body = json.dumps({"ok": True, "csrf": csrf}).encode()
         self.send_response(HTTPStatus.OK)
-        self.send_header("Set-Cookie", f"cctv_session={token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age={SESSION_TTL}")
+        self.send_header("Set-Cookie", session_cookie(token))
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
