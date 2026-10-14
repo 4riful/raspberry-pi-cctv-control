@@ -399,9 +399,11 @@ class ControlHandler(BaseHTTPRequestHandler):
         try:
             if path == "/api/action":
                 action = payload.get("action", "")
-                allowed = {"start", "stop", "restart", "retention"}
+                allowed = {"start", "stop", "restart", "retention", "poweroff"}
                 if action not in allowed:
                     raise ValueError("Unknown action")
+                if action == "poweroff" and payload.get("confirmation") != "POWER OFF":
+                    raise ValueError("Confirmation phrase does not match")
                 result = self.app.helper({"action": action})
             elif path == "/api/recordings/quarantine":
                 media_path = self.app.media_path(str(payload.get("id", "")))

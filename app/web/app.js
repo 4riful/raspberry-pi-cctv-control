@@ -2,7 +2,7 @@
 
 const $ = (selector) => document.querySelector(selector);
 const POLL_MS = 30000;
-const PAGE = 25;
+const PAGE = 40;
 const GIB = 1024 ** 3;
 const state = { csrf: null, busy: false, timer: null, clock: null, pendingConfirm: null, items: [], shown: 0, selected: -1 };
 
@@ -97,7 +97,7 @@ function toast(message, error = false) {
 function setBusy(busy, label = "working") {
   state.busy = busy;
   document.body.classList.toggle("busy", busy);
-  ["#power-button", "#restart-button", "#retention-button", "#refresh-button", "#delete-all-button", "#restore-all-button"].forEach((id) => { $(id).disabled = busy; });
+  ["#power-button", "#pi-off-button", "#restart-button", "#retention-button", "#refresh-button", "#delete-all-button", "#restore-all-button"].forEach((id) => { $(id).disabled = busy; });
   if (busy) $("#service-detail").textContent = `${label}…`;
 }
 
@@ -124,7 +124,8 @@ function renderStatus(data) {
   power.disabled = state.busy;
   power.dataset.mode = live ? "stop" : "start";
   power.className = `cmd power ${live ? "stop" : "start"}`;
-  power.querySelector("span").textContent = live ? "stop recording" : "start recording";
+  power.querySelector("span").textContent = live ? "turn off" : "turn on";
+  power.title = live ? "Turn CCTV recording off (s)" : "Turn CCTV recording on (s)";
 
   const diskUsed = 1 - data.disk.free / (data.disk.total || 1);
   const memTotal = data.memory.MemTotal || 0;
@@ -146,26 +147,28 @@ function renderStatus(data) {
   metric("#m-quarantine", `${plural(data.quarantine.count, "file")} · ${formatBytes(data.quarantine.bytes)}`);
 
   const warnings = [];
-  if (!data.camera) warnings.push(["bad", "CAM", "camera not detected: check the USB cable, then restart"]);
-  if (!storageOk) warnings.push(["bad", "DISK", "under 8G free: run cleanup or move recordings off the card"]);
-  if (!timersOk) warnings.push(["bad", "TIMERS", "a health, cleanup, or quarantine timer is not active"]);
-  if (!powerOk) warnings.push(["", "PWR", `${data.power}: undervoltage can corrupt recordings; check the supply`]);
+  if (!data.camera) warnings.push(["bad", "CAM", "camera not detected: check the USB cable, then restart", "camera"]);
+  if (!storageOk) warnings.push(["bad", "DISK", "under 8G free: run cleanup or move recordings off the card", "disk"]);
+  if (!timersOk) warnings.push(["bad", "TIMERS", "a health, cleanup, or quarantine timer is not active", "timer"]);
+  if (!powerOk) warnings.push(["", "PWR", `${data.power}: undervoltage can corrupt recordings; check the supply`, "bolt"]);
   const alerts = $("#alerts");
   alerts.textContent = "";
-  warnings.forEach(([tone, title, copy]) => {
+  warnings.forEach(([tone, title, copy, icon]) => {
     const row = document.createElement("div");
     row.className = `alert ${tone}`;
     const label = document.createElement("b");
-    label.textContent = `!! ${title}`;
+    label.textContent = title;
     const text = document.createElement("span");
     text.textContent = copy;
+    row.insertAdjacentHTML("afterbegin", svg(icon));
     row.append(label, text);
     alerts.append(row);
   });
 
-  $("#quarantine-banner").hidden = data.quarantine.count === 0;
-  $("#quarantine-count").textContent = `${plural(data.quarantine.count, "file")} in quarantine · auto-erased after 24h`;
-  $("#last-updated").textContent = `sync ${hms(new Date())}`;
+  $("#restore-all-button").hidden = data.quarantine.count === 0;
+  $("#restore-all-button").title = `Restore ${plural(data.quarantine.count, "quarantined file")} (auto-erased after 24h)`;
+  $("#quarantine-count").textContent = data.quarantine.count;
+  $("#clock").title = `last sync ${hms(new Date())}`;
 }
 
 function escapeHtml(value) {
@@ -192,12 +195,14 @@ function cell(className, content) {
   return td;
 }
 
-function glyphButton(tag, cls, glyph, label) {
+const svg = (name) => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+
+function iconButton(tag, cls, name, label) {
   const element = document.createElement(tag);
   element.className = `ib ${cls}`;
   element.title = label;
   element.setAttribute("aria-label", label);
-  element.textContent = `${glyph}︎`;
+  element.innerHTML = svg(name);
   return element;
 }
 
@@ -210,13 +215,13 @@ function renderMore() {
     row.dataset.index = index;
     const file = cell("f", item.name);
     file.title = item.relative;
-    const play = glyphButton("button", "", "▶", "Play");
+    const play = iconButton("button", "", "play", "Play");
     play.type = "button";
     play.dataset.play = index;
-    const download = glyphButton("a", "", "↓", "Download");
+    const download = iconButton("a", "", "download", "Download");
     download.href = `/media/${encodeURIComponent(item.id)}`;
     download.download = item.name;
-    const remove = glyphButton("button", "del", "✕", "Move to quarantine");
+    const remove = iconButton("button", "danger", "trash", "Move to quarantine");
     remove.type = "button";
     remove.dataset.remove = index;
     row.append(cell("d", ymd(when)), cell("t", hms(when)), file, cell("n", formatBytes(item.bytes)), cell("n a", [play, download, remove]));
@@ -224,8 +229,7 @@ function renderMore() {
   });
   $("#recording-list").append(fragment);
   state.shown = Math.min(state.shown + PAGE, state.items.length);
-  $("#more-button").hidden = state.shown >= state.items.length;
-  $("#more-count").textContent = state.items.length ? `showing ${state.shown}/${state.items.length}` : "";
+  $("#more-count").textContent = state.items.length ? `${state.shown}/${state.items.length} loaded` : "";
 }
 
 async function refreshRecordings() {
@@ -236,6 +240,7 @@ async function refreshRecordings() {
     state.shown = 0;
     state.selected = -1;
     $("#recording-list").textContent = "";
+    $("#rec-scroll").scrollTop = 0;
     renderMore();
     $("#empty-recordings").hidden = data.items.length !== 0;
     $("#recording-table").hidden = data.items.length === 0;
@@ -300,7 +305,7 @@ $("#player-dialog").addEventListener("close", () => {
   if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
   $("#player-body").replaceChildren();
 });
-$("#player-close").addEventListener("click", () => $("#player-dialog").close());
+document.querySelectorAll("dialog [data-close]").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
 
 function confirmQuarantine(item) {
   if (!item) return;
@@ -315,6 +320,7 @@ function confirmQuarantine(item) {
 function select(index) {
   const rows = $("#recording-list").children;
   if (!rows.length) return;
+  if (index >= rows.length && state.shown < state.items.length) renderMore();
   rows[state.selected]?.classList.remove("selected");
   state.selected = Math.min(Math.max(index, 0), rows.length - 1);
   rows[state.selected].classList.add("selected");
@@ -330,7 +336,11 @@ $("#recording-list").addEventListener("click", (event) => {
   else confirmQuarantine(state.items[Number(button.dataset.remove)]);
 });
 
-$("#more-button").addEventListener("click", renderMore);
+// Rows render in pages as the list scrolls, keeping the DOM small for large archives.
+$("#rec-scroll").addEventListener("scroll", (event) => {
+  const box = event.currentTarget;
+  if (state.shown < state.items.length && box.scrollTop + box.clientHeight > box.scrollHeight - 200) renderMore();
+}, { passive: true });
 
 $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -355,10 +365,34 @@ function togglePower() {
   if ($("#power-button").disabled) return;
   if ($("#power-button").dataset.mode === "start") { action("start", "starting recorder"); return; }
   askConfirm({
-    title: "stop recording?",
+    title: "turn cctv off?",
     copy: "The camera and motion recorder stop. The Raspberry Pi and this panel stay on.",
-    confirmLabel: "stop recording",
+    confirmLabel: "turn off",
     callback: () => action("stop", "stopping recorder"),
+  });
+}
+
+function powerOffPi() {
+  if (state.busy) return;
+  askConfirm({
+    title: "power off the raspberry pi?",
+    copy: "Recording stops and the Pi shuts down completely. This panel goes offline; to start it again you must unplug and replug the Pi's power.",
+    phrase: "POWER OFF",
+    confirmLabel: "power off pi",
+    callback: async () => {
+      setBusy(true, "powering off");
+      try {
+        const result = await api("/api/action", { method: "POST", body: JSON.stringify({ action: "poweroff", confirmation: "POWER OFF" }) });
+        stopTimers();
+        $("#header-state").className = "tag stopped";
+        $("#header-state").textContent = "■ HALT";
+        $("#state-dot").className = "lamp stopped";
+        $("#state-label").className = "state-label stopped";
+        $("#state-label").textContent = "PI POWERED OFF";
+        $("#service-detail").textContent = "safe to unplug in ~30s · replug power to start again";
+        toast(result.message);
+      } catch (error) { toast(error.message, true); setBusy(false); }
+    },
   });
 }
 
@@ -373,9 +407,7 @@ function quarantineAll() {
 }
 
 async function toggleLogs() {
-  const panel = $("#log-panel");
-  if (!panel.hidden) { panel.hidden = true; $("#logs").textContent = ""; return; }
-  panel.hidden = false;
+  $("#log-dialog").showModal();
   $("#logs").textContent = "loading…";
   try {
     const result = await api("/api/logs");
@@ -389,9 +421,10 @@ $("#restart-button").addEventListener("click", () => action("restart", "restarti
 $("#retention-button").addEventListener("click", () => action("retention", "running cleanup"));
 $("#refresh-button").addEventListener("click", refreshAll);
 $("#delete-all-button").addEventListener("click", quarantineAll);
+$("#pi-off-button").addEventListener("click", powerOffPi);
 $("#restore-all-button").addEventListener("click", () => run("restoring quarantine", post("/api/quarantine/restore-all"), 0));
 $("#load-logs-button").addEventListener("click", toggleLogs);
-$("#hide-logs-button").addEventListener("click", toggleLogs);
+$("#log-dialog").addEventListener("close", () => { $("#logs").textContent = ""; });
 
 const keys = {
   s: togglePower,
@@ -401,6 +434,7 @@ const keys = {
   l: toggleLogs,
   q: logout,
   Q: () => !state.busy && quarantineAll(),
+  P: powerOffPi,
   j: () => select(state.selected + 1),
   k: () => select(state.selected - 1),
   ArrowDown: () => select(state.selected + 1),

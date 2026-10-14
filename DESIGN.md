@@ -34,20 +34,23 @@ A dark, monospaced operator console. It reads like a status board: aligned colum
 
 The app is dark only, by choice (`color-scheme: dark`).
 
-## Priority order (top to bottom)
+## Layout: one screen, one scroll
 
-1. **Header**: `CCTV://recorder`, a REC/WARN/OFF tag, a live clock, and logout.
-2. **State**: the lamp plus a large RECORDING / DEGRADED / STOPPED label in its state colour, a one-line detail, and the start/stop command (full width on phones).
-3. **Alerts**: `!! PWR` style rows with a coloured left rule, shown only when action is needed.
-4. **System**: a bordered metric grid (4 columns, 2 on phones, 1 below 380px), with `█░` text bars for disk and memory, then the command keys.
-5. **Recordings**: a DATE / TIME / FILE / SIZE table with ▶ ↓ ✕ actions and 25 rows per page. FILE is hidden on phones. Rows are selectable.
-6. **Service log**: loaded only on request (`l`).
+The app fills exactly one viewport (`100dvh`, with safe-area padding for notches). The page itself never scrolls; only the recordings list does, with a sticky table header. Rows load 40 at a time as you near the bottom. On short viewports (height ≤ 600px, or phones ≤ 700px tall) the shell falls back to normal page scrolling so the list keeps a usable 80dvh.
+
+1. **Header**: brand, a REC/WARN/OFF tag, a clock (hover it for the last sync time), and a logout icon.
+2. **State row**: lamp, RECORDING / DEGRADED / STOPPED label, then icon controls for restart, cleanup, refresh, log, and **Pi power off** (red), plus the **TURN ON / TURN OFF** recording button. On phones the recording button comes first and spans the row.
+3. **Alerts**: an icon, a label, and the text, shown only when action is needed.
+4. **Metrics grid**: 6 columns on desktop, 4 at ≤860px, 2 on phones. Each label has an icon; disk and memory show `█░` bars.
+5. **Recordings**: fills the remaining height. The header carries the count, restore (amber, with the quarantine count) and quarantine-all icons. The footer shows how many rows are loaded and the keyboard hints.
+
+The service log, confirmations and the player are dialogs, so they never change the layout.
 
 ## Interaction
 
-- Every command button shows its key: `s` start/stop, `r` restart, `c` cleanup, `f` refresh, `l` log, `q` logout, `Q` quarantine all, `j`/`k` or arrows to select a row, `enter` to play, `x` to quarantine.
-- Shortcuts are ignored while typing or while a dialog is open. Destructive commands still confirm.
-- Touch targets are at least 40px on phones.
+- Every control is an SVG icon with a tooltip naming its shortcut: `s` recording on/off, `P` power off the Pi, `r` restart, `c` cleanup, `f` refresh, `l` log, `q` logout, `Q` quarantine all, `j`/`k`/arrows to select, `enter` to play, `x` to quarantine.
+- Powering off the Pi requires typing `POWER OFF`, because it can only be switched back on at the power plug. The server checks the phrase as well.
+- Shortcuts are ignored while typing or while a dialog is open. Touch targets are at least 38–44px on phones, and login inputs are 16px on touch screens to stop iOS from zooming.
 
 ## Runtime budget
 

@@ -10,6 +10,7 @@ import os
 import shutil
 import socket
 import subprocess
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -305,6 +306,11 @@ def dispatch(request: dict) -> dict:
         return status()
     if action == "logs":
         return logs()
+    if action == "poweroff":
+        log("requested Raspberry Pi power off")
+        # Reply first; the shutdown starts a moment later so the operator sees confirmation.
+        threading.Timer(2.0, lambda: systemctl("poweroff", "--no-block")).start()
+        return {"ok": True, "message": "Raspberry Pi is powering off; unplug and replug power to start it again"}
     if action == "quarantine-list":
         items = quarantine_items()
         return {"ok": True, "items": items, "count": len(items)}
