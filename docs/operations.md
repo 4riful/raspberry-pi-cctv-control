@@ -28,7 +28,8 @@ sudo systemctl list-timers 'cctv-*'
 - `/etc/motioneye/`: motionEye and camera configuration
 - `/etc/cctv-control/`: portal config, password hash, and TLS material
 - `/var/lib/motion/`: recordings
-- `/var/lib/cctv-control/quarantine/`: recoverable deleted recordings
+- `/var/lib/motion/.cctv-quarantine/`: recoverable deleted recordings (same mount as recordings, so moves are instant)
+- `/var/lib/cctv-control-web/`: saved console sessions (30-day sliding expiry)
 - `/root/cctv-backups/`: pre-install and pre-upgrade backups
 
 Rerun `sudo ./install.sh` from an updated checkout to upgrade. The installer

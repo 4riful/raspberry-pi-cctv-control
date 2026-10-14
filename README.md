@@ -1,133 +1,86 @@
+<div align="center">
+
 # Raspberry Pi CCTV Control
 
+**A private, motion-triggered CCTV recorder for a Raspberry Pi and one USB webcam.**<br>
+Recordings stay on the Pi. Nothing is exposed to the Internet.
+
 [![CI](https://github.com/4riful/raspberry-pi-cctv-control/actions/workflows/ci.yml/badge.svg)](https://github.com/4riful/raspberry-pi-cctv-control/actions/workflows/ci.yml)
+![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-c51a4a)
+![OS](https://img.shields.io/badge/Debian-13%20Trixie-a81d33)
+![Python](https://img.shields.io/badge/python-3.13-3776ab)
+![Dependencies](https://img.shields.io/badge/web%20UI-zero%20dependencies-3ddc84)
 
-Turn a Raspberry Pi and a USB webcam into a private, motion-triggered CCTV
-recorder. Recordings stay on the Pi. A small HTTPS control panel provides the
-day-to-day controls that motionEye does not: service status, power and storage
-warnings, start/stop/restart, recent logs, playback, download, retention, and
-recoverable deletion.
+<img src="docs/images/console-desktop.png" alt="CCTV Control console on desktop: recording state, system metrics, and the recordings table" width="820">
 
-This is a single-camera installation for a home or small private network. It is
-not a cloud camera platform, an NVR for dozens of cameras, or a service that
-should be exposed directly to the Internet.
+</div>
 
-## Project status
+---
 
-The components in this repository are running on a real Raspberry Pi CCTV
-installation. The following paths have been exercised on that system:
+## Why
 
-- 1280×720 UVC/MJPEG capture and motion-triggered H.264/MKV recording
-- motionEye login, live view, recording, and playback
-- process crash and systemd restart recovery
-- age/free-space retention
-- control-panel login, CSRF protection, media range requests, quarantine, and restore
-- private remote viewing through Tailscale Serve
+[motionEye](https://github.com/motioneye-project/motioneye) handles the camera well, but you can't run a recorder from it day to day. This project wraps it in a hardened install and adds a small HTTPS **control console** for the things you actually do:
 
-The all-in-one `install.sh` is shell-checked, covered by boundary tests, and
-verified in CI. **It has not yet been run from start to finish on a freshly
-imaged second Pi.** Treat the current release as an operator-maintained project,
-read the preflight section, and keep console/SSH access available during first
-installation.
+- **See it's recording.** One loud state, plus camera, power, temperature, disk and memory at a glance.
+- **Act in one tap.** Turn recording on or off, restart, run cleanup, read the service log, or power off the Pi.
+- **Review footage.** Play in the browser, download, and delete safely: deletes go to a 24-hour quarantine you can restore from.
+- **Forget about it.** Health checks every 2 minutes, hourly age and free-space retention, and crash recovery through systemd.
 
-### Tested baseline
+<table>
+<tr>
+<td width="58%" valign="top">
 
-| Component | Tested value |
-|---|---|
-| Board | Raspberry Pi 3 Model B+ |
-| OS | Debian 13 (Trixie), arm64 |
-| Python | 3.13 |
-| Camera | USB UVC webcam with a stable `video-index0` by-id path |
-| Capture | MJPEG, 1280×720, 10 FPS target |
-| Motion | Debian package 4.7.x |
-| motionEye | 0.44.0, isolated in `/opt/motioneye` |
-| Storage policy | Motion events, three-day age ceiling, 8 GiB reserve |
+### The console
 
-Other Debian/Raspberry Pi OS releases and 32-bit ARM are accepted by the
-preflight checks but are not yet part of the tested matrix.
+- **One screen.** Only the recordings list scrolls.
+- **Terminal look.** Monospace and dark, where colour only ever means state: green is live, amber is attention, red is stopped or destructive.
+- **Light on the Pi.** About 40 KB total, no frameworks, no web fonts. It polls every 30 s and **stops when the tab is hidden**.
+- **Works on a phone.** 44 px touch targets, notch-safe layout, no zoom when you tap an input.
+- **Remembers you.** Sessions last 30 days, renew on each visit, and survive restarts and upgrades.
 
-## How it is laid out
+#### Keyboard
 
-```text
-USB camera
-    │
-    ▼
-Motion  ◄── managed by motionEye on 127.0.0.1:8765
-    │
-    ├── H.264/MKV recordings ──► /var/lib/motion
-    │                              │
-    │                              ├── hourly retention
-    │                              └── 24-hour delete quarantine
-    │
-    └── health check every 2 minutes
+| Key | Action | Key | Action |
+|---|---|---|---|
+| <kbd>s</kbd> | recording on / off | <kbd>j</kbd> <kbd>k</kbd> | select recording |
+| <kbd>r</kbd> | restart recorder | <kbd>Enter</kbd> | play selected |
+| <kbd>c</kbd> | run cleanup | <kbd>x</kbd> | quarantine selected |
+| <kbd>f</kbd> | refresh | <kbd>Q</kbd> | quarantine all |
+| <kbd>l</kbd> | service log | <kbd>P</kbd> | power off the Pi |
+| <kbd>q</kbd> | sign out | | |
 
-Administrator browser
-    └── HTTPS :8443 ──► unprivileged control service
-                           └── restricted Unix socket
-                                  └── fixed-action root helper
-```
+</td>
+<td width="42%" valign="top" align="center">
 
-motionEye, Motion control, and the camera stream stay on loopback. The custom
-control panel binds to one private IPv4 address. Optional Tailscale Serve gives
-tailnet-only access to motionEye; Funnel is never enabled.
+<img src="docs/images/console-phone.png" alt="CCTV Control console on a phone" width="300">
 
-## Before installing
+</td>
+</tr>
+</table>
 
-### Hardware
+## Quick start
 
-- Raspberry Pi with a supported Debian/Raspberry Pi OS installation
-- USB webcam visible as a V4L2 device
-- Proper Pi power supply and low-loss cable
-- Dedicated powered SSD strongly recommended for recordings
-- Working local console or SSH access with `sudo`
-
-Check the camera and power state first:
-
-```bash
-find /dev/v4l/by-id -maxdepth 1 -name '*video-index0' -ls
-vcgencmd get_throttled
-```
-
-`throttled=0x0` is clear. Any other value means a current or historical power or
-thermal event. The installer stops unless the risk is explicitly accepted.
-Software cannot repair an undervoltage condition.
-
-### Recording storage
-
-Mount the intended recording filesystem at `/var/lib/motion` **before** running
-the installer, then verify it is not the root filesystem:
-
-```bash
-findmnt / /var/lib/motion
-df -h /var/lib/motion
-```
-
-This project deliberately does not automate disk formatting, partitioning, or
-mount creation. Those operations can destroy data and differ between systems.
-
-### Network
-
-The Pi needs:
-
-- Internet access during package installation
-- A stable private IPv4 address, ideally a router-side DHCP reservation
-- No public port forwarding to the Pi
-
-The installer does not configure Wi-Fi, Ethernet, firewall rules, SSH policy,
-or the router.
-
-## Installation
-
-Because this is a private repository, authenticate with GitHub first, then:
+> [!IMPORTANT]
+> Mount your recording disk at `/var/lib/motion` **first**, and keep console or SSH access open during the first install. The installer never formats, partitions or mounts disks.
 
 ```bash
 gh repo clone 4riful/raspberry-pi-cctv-control
 cd raspberry-pi-cctv-control
-sudo ./install.sh
+sudo ./install.sh            # auto-detects the camera and private IP
+sudo cctv-validate           # every check should say PASS
 ```
 
-The installer automatically selects the first stable `video-index0` camera and
-the private IPv4 address used by the default route. Override either when needed:
+The installer prints the console URL and the path of a root-only file with freshly generated passwords:
+
+```text
+Installed successfully. CCTV Control: https://192.168.1.50:8443/
+New credentials (root-only): /root/cctv-credentials-20261015T120000Z.txt
+```
+
+Open the URL, accept the self-signed certificate after confirming that the address is your Pi, and sign in. Then rotate the passwords with `sudo cctv-rotate-credentials`.
+
+<details>
+<summary><b>Installer options</b></summary>
 
 ```bash
 sudo ./install.sh \
@@ -138,260 +91,172 @@ sudo ./install.sh \
   --min-free-gib 8
 ```
 
-Run `./install.sh --help` for the complete option list.
+| Flag | Default | Meaning |
+|---|---|---|
+| `--camera PATH` | first `by-id/*video-index0` | V4L2 capture device |
+| `--camera-name NAME` | `Camera-1` | Display name (letters, digits, `.`, `-`, `_`) |
+| `--listen-address IPV4` | default-route address | The one private address the console binds to |
+| `--retention-days N` | `3` | Age ceiling for recordings |
+| `--min-free-gib N` | `8` | Free-space reserve; the oldest clips go first |
+| `--with-tailscale` | off | Install Tailscale and set up private tailnet access ([guide](docs/tailscale.md)) |
+| `--accept-power-risk` | off | Continue despite undervoltage or throttling (lab use only) |
+| `--allow-root-storage` | off | Allow recordings on the microSD (lab use only) |
 
-### What the installer changes
+</details>
+
+<details>
+<summary><b>What the installer changes</b></summary>
 
 | Area | Change |
 |---|---|
-| APT | Installs Motion, FFmpeg, Python venv, curl, CA certificates, and OpenSSL |
-| Python | Creates `/opt/motioneye` from the pinned dependency lock |
-| Configuration | Writes `/etc/motioneye`, `/etc/cctv-control`, and `/etc/default/raspberry-pi-cctv` |
-| Services | Installs and enables `motioneye` plus CCTV health, retention, control, and cleanup units |
-| Accounts | Uses package account `motion`; creates locked system account `cctv-control` |
-| TLS | Generates a local ECDSA certificate and private key on the Pi |
-| Credentials | Generates random passwords on the Pi and stores only application hashes |
-| Backups | Copies replaced configuration to `/root/cctv-backups/TIMESTAMP/` |
+| APT | Motion, FFmpeg, Python venv, curl, CA certificates, OpenSSL |
+| Python | `/opt/motioneye` from the pinned dependency lock |
+| Config | `/etc/motioneye`, `/etc/cctv-control`, `/etc/default/raspberry-pi-cctv` |
+| Services | `motioneye`, plus CCTV health, retention, control, helper and cleanup units |
+| Accounts | Package account `motion`; locked system account `cctv-control` |
+| TLS | Local ECDSA certificate and key, generated on the Pi |
+| Credentials | Random passwords generated on the Pi; only hashes are stored |
+| Backups | Replaced config copied to `/root/cctv-backups/TIMESTAMP/` |
 
-It does **not** upgrade the OS release, kernel, firmware, or bootloader. It does
-not alter SSH, firewall policy, router settings, root login, or public exposure.
+It does **not** touch the OS release, kernel, firmware, bootloader, SSH, the firewall, router settings or public exposure.
 
-### Temporary microSD or known power problems
+</details>
 
-For a lab or temporary installation only:
+## Hardware
 
-```bash
-sudo ./install.sh --allow-root-storage --accept-power-risk
-```
+| | Recommended | Notes |
+|---|---|---|
+| **Board** | Raspberry Pi 3 B+ or newer | Tested on 3 B+, Debian 13 arm64 |
+| **Camera** | Any USB UVC webcam | Needs a stable `/dev/v4l/by-id/*video-index0` |
+| **Power** | Official PSU and a short, thick cable | `vcgencmd get_throttled` must read `throttled=0x0` |
+| **Storage** | Powered USB SSD, 256 GB or more | microSD works for testing but wears out |
+| **Network** | DHCP reservation on your router | No port forwarding, ever |
 
-These flags do not solve anything; they only acknowledge that recordings may be
-lost, retention may be shorter than requested, USB devices may reset, and the SD
-card may wear out or become corrupt.
+> [!WARNING]
+> Undervoltage is the most common cause of corrupt recordings and USB cameras dropping out, and software cannot fix it. The installer stops on a power warning, and the console shows one as an amber alert.
 
-### Optional Tailscale
-
-```bash
-sudo ./install.sh --with-tailscale
-```
-
-This installs Tailscale from its signed repository, verifies its signing key,
-and starts the interactive device login. Private HTTPS Serve may require a
-one-time tailnet approval. See [docs/tailscale.md](docs/tailscale.md).
-
-## First login
-
-A fresh installation prints the path to a root-only credential file, for
-example:
+## How it works
 
 ```text
-Installed successfully. CCTV Control: https://192.168.1.50:8443/
-New credentials (root-only): /root/cctv-credentials-20261015T120000Z.txt
+USB camera ─► Motion ◄── managed by motionEye (127.0.0.1:8765)
+                │
+                ├─► H.264/MKV clips ─► /var/lib/motion
+                │                         ├── hourly age + free-space retention
+                │                         └── .cctv-quarantine/  (24 h, restorable)
+                └─► health check every 2 min
+
+Browser ── HTTPS :8443 ─► cctv-control (unprivileged, no deps)
+                              └── Unix socket, group-restricted
+                                     └── cctv-control-helper (root, fixed actions only)
 ```
 
-Read it from the Pi:
+- **Loopback only.** motionEye, Motion control and the MJPEG stream never leave `127.0.0.1`.
+- **One private address.** The console binds to exactly one private IPv4 address.
+- **Fixed privileged actions.** The web process holds no privileges. It asks a root helper for actions from a fixed list (start, stop, restart, cleanup, quarantine, restore, power off) and can never send it a shell command.
+
+## Security
+
+| | |
+|---|---|
+| **Exposure** | No public listener. Optional Tailscale **Serve** (tailnet only); **Funnel** is never enabled. |
+| **Auth** | PBKDF2 password hashes, `Secure` + `HttpOnly` + `SameSite=Strict` cookies, CSRF tokens, login throttling. Stored sessions are keyed by token hash. |
+| **Browser** | Strict CSP, `X-Frame-Options: DENY`, `no-referrer`, authenticated media with range support. |
+| **Destructive actions** | Nothing is erased immediately. Delete-all needs a typed phrase. Pi power-off needs `POWER OFF`. |
+| **Sandboxing** | systemd filesystem, capability, device, namespace and memory/CPU limits on every unit. |
+
+Read [SECURITY.md](SECURITY.md) before changing listeners or remote access.
+
+## Storage planning
+
+Recording is **motion-triggered**, not continuous. The retention age is a ceiling: when space runs low, the free-space reserve removes the oldest clips sooner. For worst-case continuous recording:
+
+| Bitrate | Per day | 3 days | 7 days |
+|---:|---:|---:|---:|
+| 1 Mbit/s | 10.8 GB | 32.4 GB | 75.6 GB |
+| 2 Mbit/s | 21.6 GB | 64.8 GB | 151.2 GB |
+| 4 Mbit/s (default cap) | 43.2 GB | 129.6 GB | 302.4 GB |
+
+256 GB is a practical minimum; 512 GB leaves headroom for busy days and quarantine.
+
+## Operating it
 
 ```bash
-sudo ls -1t /root/cctv-credentials-*.txt | head -1
-sudo cat "$(sudo ls -1t /root/cctv-credentials-*.txt | head -1)"
+sudo cctv-validate                                   # services, camera, dashboard, HTTPS
+sudo systemctl list-timers 'cctv-*'                  # health, retention, quarantine purge
+sudo journalctl -u motioneye -u cctv-control -n 100  # recent logs
+sudo cctv-rotate-credentials                         # new passwords
 ```
 
-There are separate credentials for:
+**Upgrade:** `git pull --ff-only && sudo ./install.sh YOUR_OPTIONS && sudo cctv-validate`. Passwords, sessions and recordings are kept.<br>
+**Remove:** `sudo ./uninstall.sh` removes the services but keeps all data and packages.
 
-- **CCTV Control:** `https://PI_ADDRESS:8443/`
-- **motionEye:** loopback port 8765, normally reached through Tailscale Serve or an SSH tunnel
+More in [docs/operations.md](docs/operations.md).
 
-The CCTV Control certificate is self-signed. Confirm that the address is your Pi
-before accepting the browser warning. Rotate both passwords after first use:
+<details>
+<summary><b>Ports you should see</b> (<code>ss -lntp</code>)</summary>
 
-```bash
-sudo cctv-rotate-credentials
-```
-
-Never paste generated passwords into chat, GitHub issues, terminal recordings,
-or commits.
-
-## Verify the installation
-
-```bash
-sudo cctv-validate
-```
-
-A healthy result reports active services, an existing camera, a responsive
-motionEye dashboard, and a responsive HTTPS control panel. Also check:
-
-```bash
-sudo systemctl --failed
-sudo systemctl list-timers 'cctv-*'
-sudo journalctl -u motioneye.service -u cctv-health.service --since today
-ss -lntp
-```
-
-Expected listeners:
-
-| Port | Expected binding | Purpose |
+| Port | Bound to | Purpose |
 |---|---|---|
 | 7999 | `127.0.0.1` | Motion control |
 | 8765 | `127.0.0.1` | motionEye |
 | 9081 | `127.0.0.1` | MJPEG stream |
-| 8443 | Selected private IPv4 | CCTV Control HTTPS |
-| 443 | Tailscale address only, when enabled | Private motionEye Serve |
+| 8443 | your private IPv4 | CCTV Control (HTTPS) |
+| 443 | Tailscale address only | Private motionEye via Serve (optional) |
 
-Perform one real walk-through test after installation. Wait for the configured
-two-minute event gap, then confirm that the resulting MKV appears in the portal
-and plays to completion.
+</details>
 
-## Daily operation
+<details>
+<summary><b>Troubleshooting</b></summary>
 
-The control panel provides:
+**`no stable V4L2 by-id index0 camera found`**: run `v4l2-ctl --list-devices`, then pass the node ending in `video-index0` with `--camera`.
 
-- A prominent **Turn CCTV off/on** control; this stops recording, not the Pi
-- Recorder, camera, storage, retention, access, power, memory, and temperature status
-- Restart and retention controls
-- Recent service logs
-- Recording playback and download
-- Individual or all-recording quarantine
-- Restore during the 24-hour quarantine window
+**Installer stops on `throttled=…`**: use a properly rated supply, a short cable and powered USB storage, then fully power-cycle the Pi to clear the historical bits.
 
-Useful terminal commands:
+**Console won't open**: `sudo systemctl status cctv-control cctv-control-helper` and `curl -kI https://PI_ADDRESS:8443/`. Use the exact address chosen at install; the installer does not open firewall ports.
 
-```bash
-sudo cctv-validate
-sudo systemctl restart motioneye.service
-sudo systemctl restart cctv-control.service
-sudo journalctl -u motioneye.service -n 100 --no-pager
-sudo journalctl -t cctv-health -n 100 --no-pager
-```
+**A recording can't be deleted**: the clip still being written is marked <code>● rec</code> and can be removed about 3 minutes after the motion event ends.
 
-More procedures are in [docs/operations.md](docs/operations.md).
+**Blocky video or dropped frames**: check power first (`vcgencmd get_throttled`), then CPU load and USB errors. Don't lower the bitrate first.
 
-## Retention and capacity
+**Tailscale connects but the browser doesn't**: the viewing device must run the Tailscale client on the same tailnet. Check that `tailscale serve status` says *tailnet only*.
 
-The default is **motion-triggered recording**, not continuous recording. Three
-days is an age ceiling, not a promise: the free-space reserve removes the oldest
-movie sooner when necessary.
+</details>
 
-Approximate continuous-recording requirements before filesystem overhead:
+<details>
+<summary><b>Tested baseline and known limitations</b></summary>
 
-| Average video bitrate | Per day | Three days | Seven days |
-|---:|---:|---:|---:|
-| 1 Mbit/s | 10.8 GB | 32.4 GB | 75.6 GB |
-| 2 Mbit/s | 21.6 GB | 64.8 GB | 151.2 GB |
-| 4 Mbit/s | 43.2 GB | 129.6 GB | 302.4 GB |
+| Component | Tested |
+|---|---|
+| Board / OS | Raspberry Pi 3 Model B+, Debian 13 (Trixie) arm64 |
+| Python / Motion / motionEye | 3.13 / 4.7.x / 0.44.0 (isolated in `/opt/motioneye`) |
+| Capture | UVC MJPEG 1280×720 at 10 FPS, H.264/MKV output |
 
-The supplied profile allows up to 4 Mbit/s to avoid the severe macroblocking
-seen at very low H.264 bitrates. Actual motion-event usage is scene-dependent.
-A 256 GB powered SSD is a practical minimum; 512 GB leaves more room for event
-spikes, quarantine, and filesystem reserve.
+These paths have been exercised on a live installation: capture and recording, motionEye playback, crash and restart recovery, retention, console login with CSRF, media range requests, quarantine and restore, and Tailscale Serve.
 
-## Security model
+**Limitations:**
+- Single camera only.
+- The installer has not yet been run end to end on a freshly imaged second Pi.
+- No automatic disk setup, firewall or SSH hardening.
+- The certificate is self-signed.
+- Some UVC/Motion combinations log non-monotonic DTS warnings even though the clips decode fine.
+- Power and USB faults can't be fixed in software.
 
-- No public listener is configured.
-- motionEye and Motion interfaces remain loopback-only.
-- CCTV Control uses HTTPS, PBKDF2 password verification, secure cookies, CSRF
-  tokens, login throttling, strict browser headers, and authenticated media.
-- The web process is unprivileged. A root helper accepts only fixed operations
-  through a group-restricted Unix socket; it does not accept shell commands.
-- Delete-all requires a typed phrase and moves files to quarantine instead of
-  immediately erasing them.
-- systemd units use filesystem, capability, device, namespace, and resource
-  restrictions.
+</details>
 
-Read [SECURITY.md](SECURITY.md) before changing listener addresses or remote
-access.
-
-## Upgrade, rollback, and removal
-
-Upgrade from the checked-out repository:
-
-```bash
-git pull --ff-only
-sudo ./install.sh YOUR_ORIGINAL_OPTIONS
-sudo cctv-validate
-```
-
-The installer preserves existing password hashes and creates a timestamped
-configuration backup before replacement.
-
-Remove custom services while preserving all data and installed packages:
-
-```bash
-sudo ./uninstall.sh
-```
-
-The uninstall script intentionally refuses unattended recording deletion. Use
-the portal quarantine flow, verify the result, and allow the 24-hour cleanup.
-
-## Troubleshooting
-
-### `no stable V4L2 by-id index0 camera found`
-
-```bash
-v4l2-ctl --list-devices
-find /dev/v4l/by-id -maxdepth 1 -type l -ls
-```
-
-Use the capture node ending in `video-index0`, not a metadata-only index. Pass it
-with `--camera` if auto-detection cannot choose it.
-
-### Installation stops on `throttled=...`
-
-Use a correctly rated Pi supply, a short low-loss cable, and externally powered
-USB storage. A reboot or complete power cycle is needed before historical bits
-can clear. Use `--accept-power-risk` only when data loss is acceptable.
-
-### The control page does not open
-
-```bash
-sudo systemctl status cctv-control cctv-control-helper
-sudo journalctl -u cctv-control -u cctv-control-helper -n 100 --no-pager
-curl -kI https://PI_ADDRESS:8443/
-```
-
-Use the exact address selected during installation and accept the local
-certificate warning. The installer does not open a firewall port for you.
-
-### Recordings are blocky or drop frames
-
-Check `vcgencmd get_throttled`, CPU load, USB errors, and the active camera
-configuration. The supplied profile uses `movie_quality 85` and
-`movie_bps 4000000`. A Pi 3 may still lose frames under high scene complexity or
-poor power. Do not lower bitrate first; verify power and capture stability.
-
-### Tailscale works but the browser cannot connect
-
-The viewing device must run the Tailscale client and be connected to the same
-tailnet. Signing into the Tailscale admin website is not sufficient. Check
-`tailscale status` and `tailscale serve status`; Serve must report `tailnet only`.
-
-## Known limitations
-
-- One local V4L2 camera
-- No fresh-image end-to-end installer test yet
-- No automatic disk partitioning, formatting, or mounting
-- No automatic firewall or SSH hardening
-- Locally generated certificate rather than a public CA certificate
-- Some UVC/Motion combinations produce non-monotonic DTS warnings even when the
-  completed recording decodes successfully
-- A reboot recovery test is installation-specific and must be performed by the
-  operator when safe
-- Power and USB hardware faults cannot be fixed in software
-
-## Repository map
+## Repository layout
 
 ```text
-app/                       HTTPS control panel and fixed-action helper
-app/web/                   Dependency-free HTML, CSS, and JavaScript
-docs/                      Operations and Tailscale procedures
-scripts/                   Health, retention, validation, credential rotation
-systemd/                   Hardened service and timer units
-templates/                 motionEye and Motion configuration templates
-tests/                     Path-confinement and identifier boundary tests
-install.sh                 Full installer and preflight checks
-uninstall.sh               Non-destructive service removal
-requirements-motioneye.lock  Pinned Python dependency set
+app/                 control console (Python stdlib) and fixed-action root helper
+app/web/             dependency-free HTML / CSS / JS
+docs/                operations, Tailscale, screenshots
+scripts/             health, retention, validation, credential rotation
+systemd/             hardened service and timer units
+templates/           motionEye and Motion configuration
+tests/               path-confinement and identifier boundary tests
+install.sh           installer with preflight checks
+uninstall.sh         non-destructive removal
 ```
 
 ## License
 
-Copyright retained. This private repository does not grant redistribution
-rights unless a license is added later.
+Copyright retained. This private repository grants no redistribution rights unless a license is added later.
