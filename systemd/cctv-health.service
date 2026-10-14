@@ -1,0 +1,7 @@
+[Unit]
+Description=CCTV service, camera, storage and power health check
+After=motioneye.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cctv-health

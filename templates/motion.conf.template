@@ -1,0 +1,15 @@
+# motionEye metadata values containing password hashes and generated secrets are
+# created on the Pi and intentionally omitted from this sanitized template.
+# @enabled true
+# @admin_username admin
+# @normal_username viewer
+# @lang en
+
+daemon off
+setup_mode off
+webcontrol_port 7999
+webcontrol_localhost on
+webcontrol_parms 2
+camera camera-1.conf
+watchdog_tmo 30
+watchdog_kill 10

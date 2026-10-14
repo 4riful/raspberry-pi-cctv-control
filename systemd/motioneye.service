@@ -1,0 +1,45 @@
+[Unit]
+Description=motionEye CCTV server with managed Motion daemon
+After=network.target local-fs.target
+Conflicts=motion.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=motion
+Group=motion
+RuntimeDirectory=motioneye
+RuntimeDirectoryMode=0750
+LogsDirectory=motioneye
+LogsDirectoryMode=0750
+ExecStart=/opt/motioneye/bin/meyectl startserver -c /etc/motioneye/motioneye.conf
+Restart=on-failure
+RestartSec=10s
+UMask=0027
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/etc/motioneye /var/lib/motion /var/log/motioneye
+DevicePolicy=closed
+DeviceAllow=@CAMERA_NODE@ rw
+MemoryMax=650M
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

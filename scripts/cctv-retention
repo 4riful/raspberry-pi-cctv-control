@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+ROOT=${CCTV_RECORDINGS_ROOT:-/var/lib/motion}
+RETENTION_DAYS=${CCTV_RETENTION_DAYS:-3}
+MIN_FREE_KIB=${CCTV_MIN_FREE_KIB:-8388608}
+
+[ -d "$ROOT" ]
+[ ! -L "$ROOT" ]
+[ "$(readlink -f "$ROOT")" = "$ROOT" ]
+
+# find -mtime is rounded down. RETENTION_DAYS=3 maps to +2.
+mtime=$((RETENTION_DAYS - 1))
+find "$ROOT" -xdev -type f -mtime "+$mtime" \
+  \( -name '*.mkv' -o -name '*.mp4' -o -name '*.avi' -o -name '*.jpg' -o -name '*.jpeg' \) \
+  -delete
+
+while [ "$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')" -lt "$MIN_FREE_KIB" ]; do
+  oldest=$(find "$ROOT" -xdev -type f \
+    \( -name '*.mkv' -o -name '*.mp4' -o -name '*.avi' \) \
+    -printf '%T@ %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
+  [ -n "$oldest" ] || exit 1
+  rm -f -- "$oldest"
+done
+
+find "$ROOT" -xdev -depth -type d -empty -delete

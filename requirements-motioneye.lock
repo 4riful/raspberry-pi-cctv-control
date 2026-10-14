@@ -1,0 +1,19 @@
+# Exact dependency set validated on Debian 13 arm64 with Python 3.13.
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
+babel==2.18.0
+boto3==1.43.113
+botocore==1.43.113
+cffi==2.1.1
+Jinja2==3.1.6
+jmespath==1.1.0
+MarkupSafe==3.0.4
+motioneye @ https://files.pythonhosted.org/packages/e3/6b/1eec9089d3e75ed994810bf1a26e231470c3f65c0786fde519c639703011/motioneye-0.44.0-py3-none-any.whl#sha256=54723abbd2a011251e8b1836cee3f5fd90cf3e59fa0971cb3eaeaeff0bda9cdc
+pillow==12.3.0
+pycparser==3.11
+pycurl==7.48.0
+python-dateutil==2.9.0.post0
+s3transfer==0.19.2
+six==1.17.0
+tornado==6.5.10
+urllib3==2.8.0

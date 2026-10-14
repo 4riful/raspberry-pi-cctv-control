@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#edf1f0">
+  <title>CCTV Control</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9M7.1 5.8a8 8 0 1 0 9.8 0"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7L20 14M20 8v6h-6"/></symbol>
+    <symbol id="i-clean" viewBox="0 0 24 24"><path d="m14 4 6 6-8.5 8.5a4.2 4.2 0 0 1-6 0 4.2 4.2 0 0 1 0-6zM4 20h16M12 6l6 6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M18.5 9a7 7 0 0 0-12-2.5L4 9m16 6-2.5 2.5A7 7 0 0 1 5.5 15"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></symbol>
+    <symbol id="i-temp" viewBox="0 0 24 24"><path d="M10 14.8V5a2 2 0 0 1 4 0v9.8a4 4 0 1 1-4 0zM12 9v8"/></symbol>
+    <symbol id="i-storage" viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 14h16M16 17h1"/></symbol>
+    <symbol id="i-memory" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><path d="M9 9h6v6H9M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></symbol>
+    <symbol id="i-counter" viewBox="0 0 24 24"><path d="M7 7h10v10H7zM4 4v4m0-4h4M20 20v-4m0 4h-4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-heartbeat" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 8h16v12H4zM3 4h18v4H3zM9 12h6"/></symbol>
+    <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-quarantine" viewBox="0 0 24 24"><path d="M5 7h14l-1 13H6zM4 4h16v3H4zM9 11l6 6m0-6-6 6"/></symbol>
+    <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 7M4 4v6h6M12 8v5l3 2"/></symbol>
+    <symbol id="i-signout" viewBox="0 0 24 24"><path d="M10 5H5v14h5M13 8l4 4-4 4m4-4H9"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 2.8 8 7 10 4.2-2 7-5.5 7-10V6zM9 12l2 2 4-5"/></symbol>
+    <symbol id="i-file-video" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 12l5 3-5 3z"/></symbol>
+  </svg>
+  <a class="skip-link" href="#main">Skip to controls</a>
+
+  <main id="login-view" class="login-shell" aria-labelledby="login-title">
+    <section class="login-panel">
+      <div class="signal-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+      <h1 id="login-title">CCTV Control</h1>
+      <p>Private operations access for your Raspberry Pi CCTV.</p>
+      <form id="login-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <p id="login-error" class="form-error" role="alert"></p>
+        <button class="button primary wide" type="submit"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>Open control board</button>
+      </form>
+      <p class="private-note">Private LAN and Tailscale access only</p>
+    </section>
+  </main>
+
+  <div id="app-view" class="app-shell" hidden>
+    <header class="topbar">
+      <a href="#overview" class="brand"><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg>CCTV <span>CONTROL</span></a>
+      <div class="topbar-status" aria-live="polite">
+        <span id="header-dot" class="status-dot unknown"></span>
+        <span id="header-state">Checking line</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="quick-power-button" class="quick-power stop" type="button"><svg class="icon" aria-hidden="true"><use href="#i-power"/></svg><span>Turn CCTV off</span></button>
+        <button id="logout-button" class="text-button with-icon" type="button"><svg class="icon" aria-hidden="true"><use href="#i-signout"/></svg>Sign out</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section id="overview" class="overview" aria-labelledby="overview-title">
+        <div class="status-mast">
+          <p id="clock" class="clock">--:--:--</p>
+          <p class="date" id="today">Status board</p>
+          <p class="node">RASPBERRY PI CCTV<br>PRIVATE LAN</p>
+        </div>
+        <div class="line-board">
+          <div class="title-row">
+            <div>
+              <h1 id="overview-title">Recording line</h1>
+              <p id="service-detail">Connecting to the control broker…</p>
+            </div>
+            <p id="primary-state" class="state-flag unknown">Checking</p>
+          </div>
+
+          <ol class="service-line" aria-label="CCTV service path">
+             <li data-stage="camera"><span class="station"></span><strong><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg>Camera</strong><small id="stage-camera">Checking</small></li>
+             <li data-stage="recorder"><span class="station"></span><strong><svg class="icon" aria-hidden="true"><use href="#i-heartbeat"/></svg>Recorder</strong><small id="stage-recorder">Checking</small></li>
+             <li data-stage="storage"><span class="station"></span><strong><svg class="icon" aria-hidden="true"><use href="#i-storage"/></svg>Storage</strong><small id="stage-storage">Checking</small></li>
+             <li data-stage="retention"><span class="station"></span><strong><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>Retention</strong><small id="stage-retention">Checking</small></li>
+             <li data-stage="access"><span class="station"></span><strong><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>Access</strong><small>Private HTTPS</small></li>
+          </ol>
+
+          <div id="alerts" class="alerts" aria-live="polite"></div>
+
+          <p class="control-label">Fixed service actions</p>
+          <div class="control-strip" aria-label="CCTV service controls">
+            <button id="start-button" class="lever start" type="button"><svg class="lever-icon icon" aria-hidden="true"><use href="#i-power"/></svg><span>Turn CCTV on</span><small>Start motion recording</small></button>
+            <button id="stop-button" class="lever stop" type="button"><svg class="lever-icon icon" aria-hidden="true"><use href="#i-stop"/></svg><span>Turn CCTV off</span><small>Pi stays powered on</small></button>
+            <button id="restart-button" class="lever" type="button"><svg class="lever-icon icon" aria-hidden="true"><use href="#i-restart"/></svg><span>Restart</span><small>Recover the service</small></button>
+            <button id="retention-button" class="lever" type="button"><svg class="lever-icon icon" aria-hidden="true"><use href="#i-clean"/></svg><span>Run cleanup</span><small>Apply retention now</small></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="diagnostics section-rule" aria-labelledby="diagnostics-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="diagnostics-title">Line diagnostics</h2>
+            <p>Current operating measurements and recovery signals.</p>
+          </div>
+          <button id="refresh-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Refresh status</button>
+        </div>
+        <dl class="diagnostic-table">
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-bolt"/></svg>Power</dt><dd id="diag-power">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-temp"/></svg>Temperature</dt><dd id="diag-temp">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-storage"/></svg>Storage free</dt><dd id="diag-storage">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-memory"/></svg>Memory available</dt><dd id="diag-memory">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-counter"/></svg>Service restarts</dt><dd id="diag-restarts">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>System uptime</dt><dd id="diag-uptime">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-heartbeat"/></svg>Health checks</dt><dd id="diag-health">Checking</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-archive"/></svg>Quarantine</dt><dd id="diag-quarantine">Checking</dd></div>
+        </dl>
+        <details class="log-panel">
+          <summary><svg class="icon" aria-hidden="true"><use href="#i-log"/></svg>Recent service log</summary>
+          <div class="log-actions"><button id="load-logs-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-log"/></svg>Load recent log</button></div>
+          <pre id="logs">Logs load only when requested.</pre>
+        </details>
+      </section>
+
+      <section class="recordings section-rule" aria-labelledby="recordings-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="recordings-title">Recording departures</h2>
+            <p id="recording-summary">Loading the archive…</p>
+          </div>
+          <button id="delete-all-button" class="button danger-outline" type="button"><svg class="icon" aria-hidden="true"><use href="#i-quarantine"/></svg>Quarantine all</button>
+        </div>
+        <div id="quarantine-banner" class="quarantine-banner" hidden>
+          <div><strong id="quarantine-count">0 recordings in quarantine</strong><span>Automatically erased after 24 hours.</span></div>
+          <button id="restore-all-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-restore"/></svg>Restore all</button>
+        </div>
+        <div class="recording-head" aria-hidden="true"><span>Departure</span><span>File</span><span>Size</span><span>Actions</span></div>
+        <ol id="recording-list" class="recording-list" aria-live="polite"></ol>
+        <div id="empty-recordings" class="empty-state" hidden>
+          <svg class="empty-icon icon" aria-hidden="true"><use href="#i-file-video"/></svg>
+          <strong>No recordings on the board</strong>
+          <p>New motion events will appear here after they finish.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>CCTV Control · private operations</span>
+      <span id="last-updated">Not yet updated</span>
+    </footer>
+  </div>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog" id="confirm-form">
+      <p class="dialog-route">Protected action</p>
+      <h2 id="confirm-title">Confirm action</h2>
+      <p id="confirm-copy"></p>
+      <label id="confirm-label" for="confirm-input">Type the confirmation phrase</label>
+      <input id="confirm-input" autocomplete="off">
+      <div class="dialog-actions">
+        <button class="button secondary" value="cancel">Cancel</button>
+        <button id="confirm-submit" class="button danger" value="confirm">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

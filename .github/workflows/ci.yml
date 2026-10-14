@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Check shell scripts
+        run: shellcheck install.sh uninstall.sh scripts/*
+      - name: Compile Python
+        run: python3 -m py_compile app/cctv_control.py app/cctv_control_helper.py
+      - name: Run security-boundary tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Check JavaScript
+        run: node --check app/web/app.js
+      - name: Scan repository for forbidden private artifacts
+        run: |
+          ! grep -RIE '(BEGIN (OPENSSH|RSA|EC) PRIVATE KEY|tailscale.*auth.*key|100\.[0-9]+\.[0-9]+\.[0-9]+|192\.168\.0\.192|jiri-ai)' --exclude-dir=.git --exclude=ci.yml .

@@ -1,0 +1,39 @@
+[Unit]
+Description=Private HTTPS CCTV Control interface
+After=network-online.target cctv-control-helper.service
+Wants=network-online.target
+Requires=cctv-control-helper.service
+
+[Service]
+Type=simple
+User=cctv-control
+Group=cctv-control
+SupplementaryGroups=adm
+ExecStart=/usr/bin/python3 /opt/cctv-control/cctv_control.py --config /etc/cctv-control/config.json
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+DevicePolicy=closed
+MemoryMax=128M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

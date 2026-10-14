@@ -1,0 +1,42 @@
+[Unit]
+Description=CCTV Control privileged action broker
+After=local-fs.target
+Before=cctv-control.service
+
+[Service]
+Type=simple
+User=root
+Group=cctv-control
+SupplementaryGroups=adm
+ExecStart=/usr/bin/python3 /opt/cctv-control/cctv_control_helper.py
+RuntimeDirectory=cctv-control
+RuntimeDirectoryMode=0750
+StateDirectory=cctv-control
+StateDirectoryMode=0750
+Restart=on-failure
+RestartSec=5s
+UMask=0027
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_FOWNER
+AmbientCapabilities=CAP_DAC_OVERRIDE CAP_FOWNER
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/motion /var/lib/cctv-control /run/cctv-control
+MemoryMax=96M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

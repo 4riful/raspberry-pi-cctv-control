@@ -1,0 +1,14 @@
+[Unit]
+Description=CCTV recording retention and free-space reserve
+ConditionDirectoryNotEmpty=/var/lib/motion
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cctv-retention
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/motion

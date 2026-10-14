@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+# shellcheck source=/dev/null
+. /etc/default/raspberry-pi-cctv
+
+throttled=$(vcgencmd get_throttled 2>/dev/null || printf 'unknown')
+case "$throttled" in
+  throttled=0x0) ;;
+  *) logger -p daemon.warning -t cctv-health "Power warning: $throttled" ;;
+esac
+
+if [ ! -e "$CCTV_CAMERA_DEVICE" ]; then
+  logger -p daemon.err -t cctv-health "Camera device missing: $CCTV_CAMERA_DEVICE"
+  exit 1
+fi
+
+if [ "$(df -Pk "$CCTV_RECORDINGS_ROOT" | awk 'NR==2 {print $4}')" -lt "$CCTV_MIN_FREE_KIB" ]; then
+  logger -p daemon.warning -t cctv-health "Recording filesystem below reserve; invoking retention"
+  /usr/local/sbin/cctv-retention
+fi
+
+if ! systemctl is-active --quiet motioneye.service; then
+  logger -p daemon.err -t cctv-health "motionEye/Motion inactive; requesting start"
+  systemctl start motioneye.service
+  exit 1
+fi
+
+if ! curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:8765/; then
+  sleep 10
+  if ! curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:8765/; then
+    logger -p daemon.err -t cctv-health "motionEye dashboard unhealthy after retry; requesting restart"
+    systemctl restart motioneye.service
+    exit 1
+  fi
+fi

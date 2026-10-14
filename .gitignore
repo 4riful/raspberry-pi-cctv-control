@@ -1,0 +1,14 @@
+# Runtime secrets and generated artifacts
+*.key
+*.crt
+credentials*.txt
+credentials.json
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local test output
+screenshots/
+test-output/
+dist/

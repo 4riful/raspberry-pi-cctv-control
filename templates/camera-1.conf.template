@@ -1,0 +1,38 @@
+# @enabled true
+# @id 1
+# @admin_only false
+# @storage_device custom-path
+# @motion_detection true
+# @preserve_movies 3
+# @manual_record true
+
+camera_name @CAMERA_NAME@
+video_device @CAMERA_DEVICE@
+video_params palette=8
+width 1280
+height 720
+framerate 10
+target_dir /var/lib/motion/@CAMERA_SLUG@
+text_left @CAMERA_NAME@
+text_right %Y-%m-%d\n%I:%M:%S %p
+emulate_motion off
+threshold 4000
+noise_tune on
+despeckle_filter EedDl
+minimum_motion_frames 3
+event_gap 120
+pre_capture 5
+post_capture 10
+picture_output off
+movie_output on
+movie_max_time 300
+movie_quality 85
+movie_bps 4000000
+movie_codec mkv
+movie_duplicate_frames off
+movie_filename %Y/%m/%d/%Y-%m-%d_%I-%M-%S_%p-%v
+stream_port 9081
+stream_localhost on
+stream_quality 60
+stream_maxrate 5
+stream_motion on

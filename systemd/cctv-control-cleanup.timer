@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly cleanup of expired CCTV quarantine
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
