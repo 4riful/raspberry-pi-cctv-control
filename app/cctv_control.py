@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import heapq
 import hmac
 import json
 import mimetypes
@@ -103,8 +104,10 @@ class App:
             raise ValueError("Invalid recording path")
         return resolved
 
-    def recordings(self) -> dict:
-        rows = []
+    def recordings(self, limit: int = 250) -> dict:
+        # Keep only the newest `limit` entries in memory; large archives stay cheap to list.
+        newest: list[tuple[float, str, int]] = []
+        total = 0
         total_bytes = 0
         if self.recordings_root.is_dir() and not self.recordings_root.is_symlink():
             for base, dirs, files in os.walk(self.recordings_root, followlinks=False):
@@ -115,20 +118,28 @@ class App:
                         continue
                     try:
                         stat = path.stat()
-                        relative = path.relative_to(self.recordings_root).as_posix()
-                    except (OSError, ValueError):
+                    except OSError:
                         continue
+                    total += 1
                     total_bytes += stat.st_size
-                    rows.append({
-                        "id": b64_id(relative),
-                        "name": path.name,
-                        "relative": relative,
-                        "bytes": stat.st_size,
-                        "modified": int(stat.st_mtime),
-                        "kind": "image" if path.suffix.lower() in {".jpg", ".jpeg"} else "video",
-                    })
-        rows.sort(key=lambda item: item["modified"], reverse=True)
-        return {"items": rows[:250], "total": len(rows), "bytes": total_bytes, "limited": len(rows) > 250}
+                    entry = (stat.st_mtime, str(path), stat.st_size)
+                    if len(newest) < limit:
+                        heapq.heappush(newest, entry)
+                    else:
+                        heapq.heappushpop(newest, entry)
+        rows = []
+        for mtime, raw, size in sorted(newest, reverse=True):
+            path = Path(raw)
+            relative = path.relative_to(self.recordings_root).as_posix()
+            rows.append({
+                "id": b64_id(relative),
+                "name": path.name,
+                "relative": relative,
+                "bytes": size,
+                "modified": int(mtime),
+                "kind": "image" if path.suffix.lower() in {".jpg", ".jpeg"} else "video",
+            })
+        return {"items": rows, "total": total, "bytes": total_bytes, "limited": total > limit}
 
 
 class ControlHandler(BaseHTTPRequestHandler):
@@ -228,9 +239,7 @@ class ControlHandler(BaseHTTPRequestHandler):
             if not self.require_session():
                 return
             try:
-                result = self.app.helper({"action": "status"})
-                result["recordings"] = self.app.recordings()
-                self.json_response(result)
+                self.json_response(self.app.helper({"action": "status"}))
             except Exception as exc:
                 self.error_json(str(exc), HTTPStatus.BAD_GATEWAY)
         elif path == "/api/recordings":

@@ -1,27 +1,36 @@
 "use strict";
 
 const $ = (selector) => document.querySelector(selector);
-const state = { csrf: null, busy: false, timer: null, pendingConfirm: null };
+const POLL_MS = 30000;
+const PAGE = 25;
+const GIB = 1024 ** 3;
+const state = { csrf: null, busy: false, timer: null, clock: null, pendingConfirm: null, items: [], shown: 0, selected: -1 };
 
 const formatBytes = (value) => {
-  if (!Number.isFinite(value)) return "Unknown";
-  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  if (!Number.isFinite(value)) return "?";
+  const units = ["B", "K", "M", "G", "T"];
   let amount = value;
   let index = 0;
   while (amount >= 1024 && index < units.length - 1) { amount /= 1024; index += 1; }
-  return `${amount >= 10 || index === 0 ? amount.toFixed(0) : amount.toFixed(1)} ${units[index]}`;
+  return `${amount >= 10 || index === 0 ? amount.toFixed(0) : amount.toFixed(1)}${units[index]}`;
 };
 
 const formatDuration = (seconds) => {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  return [days ? `${days}d` : "", hours ? `${hours}h` : "", `${minutes}m`].filter(Boolean).join(" ");
+  return [days ? `${days}d` : "", hours ? `${hours}h` : "", `${minutes}m`].filter(Boolean).join("");
 };
 
-const formatDate = (epoch) => new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium", timeStyle: "medium", hour12: true,
-}).format(new Date(epoch * 1000));
+const pad = (value) => String(value).padStart(2, "0");
+const hms = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+const ymd = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
+// Text-mode usage bar, e.g. ██████░░░░
+const bar = (fraction, width = 10) => {
+  const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * width);
+  return `<span class="bar">${"█".repeat(filled)}<i>${"░".repeat(width - filled)}</i></span>`;
+};
 
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
@@ -31,14 +40,38 @@ async function api(path, options = {}) {
   try { payload = await response.json(); } catch { payload = { error: `HTTP ${response.status}` }; }
   if (response.status === 401 && path !== "/api/login") {
     showLogin();
-    throw new Error("Your session ended. Sign in again.");
+    throw new Error("session ended; sign in again");
   }
-  if (!response.ok || payload.ok === false) throw new Error(payload.error || `Request failed (${response.status})`);
+  if (!response.ok || payload.ok === false) throw new Error(payload.error || `request failed (${response.status})`);
   return payload;
 }
 
-function showLogin() {
+const appVisible = () => !$("#app-view").hidden;
+
+function tick() { $("#clock").textContent = hms(new Date()); }
+
+function stopTimers() {
   clearInterval(state.timer);
+  clearInterval(state.clock);
+  state.timer = state.clock = null;
+}
+
+// Polling and the clock stop while the tab is in the background so idle tabs cost the Pi nothing.
+function startTimers() {
+  stopTimers();
+  if (document.hidden || !appVisible()) return;
+  tick();
+  state.clock = setInterval(tick, 1000);
+  state.timer = setInterval(refreshStatus, POLL_MS);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopTimers();
+  else if (appVisible()) { refreshStatus(); startTimers(); }
+});
+
+function showLogin() {
+  stopTimers();
   $("#app-view").hidden = true;
   $("#login-view").hidden = false;
   $("#password").value = "";
@@ -49,83 +82,90 @@ function showApp() {
   $("#login-view").hidden = true;
   $("#app-view").hidden = false;
   refreshAll();
-  clearInterval(state.timer);
-  state.timer = setInterval(refreshStatus, 15000);
+  startTimers();
 }
 
 function toast(message, error = false) {
   const element = $("#toast");
-  element.textContent = message;
-  element.style.background = error ? "var(--red)" : "var(--ink)";
+  element.textContent = `${error ? "ERR" : "OK "} ${message}`;
+  element.classList.toggle("err", error);
   element.hidden = false;
   clearTimeout(element.hideTimer);
-  element.hideTimer = setTimeout(() => { element.hidden = true; }, 5000);
+  element.hideTimer = setTimeout(() => { element.hidden = true; }, 4000);
 }
 
-function setBusy(busy, label = "Dispatching command") {
+function setBusy(busy, label = "working") {
   state.busy = busy;
   document.body.classList.toggle("busy", busy);
-  ["#quick-power-button", "#restart-button", "#retention-button", "#refresh-button", "#delete-all-button"].forEach((id) => { $(id).disabled = busy; });
-  if (busy) {
-    $("#header-state").textContent = label;
-    $("#primary-state").textContent = "Pending";
-    $("#primary-state").className = "visually-hidden";
-  }
+  ["#power-button", "#restart-button", "#retention-button", "#refresh-button", "#delete-all-button", "#restore-all-button"].forEach((id) => { $(id).disabled = busy; });
+  if (busy) $("#service-detail").textContent = `${label}…`;
 }
 
-function markStage(name, good, text) {
-  const item = document.querySelector(`[data-stage="${name}"]`);
-  item.classList.toggle("live", good);
-  item.classList.toggle("problem", !good);
-  const label = $(`#stage-${name}`);
-  if (label) label.textContent = text;
+function metric(id, html, tone = "") {
+  const element = $(id);
+  element.className = `${element.classList.contains("span") ? "span " : ""}${tone ? `is-${tone}` : ""}`;
+  element.querySelector("dd").innerHTML = html;
 }
 
 function renderStatus(data) {
-  const serviceLive = data.service.active === "active";
-  const healthy = serviceLive && data.camera && data.dashboard;
-  const degraded = serviceLive && !healthy;
-  const mode = healthy ? "live" : degraded ? "degraded" : "stopped";
-  const label = healthy ? "Recording on" : degraded ? "Needs attention" : "Recording off";
-  $("#header-dot").className = `status-dot ${mode}`;
-  $("#header-state").textContent = label;
-  $("#state-lamp").className = `state-lamp ${mode}`;
-  $("#primary-state").textContent = healthy ? "Recorder active" : degraded ? "Attention needed" : "Recorder stopped";
-  $("#overview-title").textContent = healthy ? "Recording is on" : degraded ? "Recording needs attention" : "Recording is off";
+  const live = data.service.active === "active";
+  const healthy = live && data.camera && data.dashboard;
+  const mode = healthy ? "live" : live ? "degraded" : "stopped";
+  $("#header-state").className = `tag ${mode}`;
+  $("#header-state").textContent = healthy ? "● REC" : live ? "▲ WARN" : "■ OFF";
+  $("#state-dot").className = `lamp ${mode}`;
+  $("#state-label").className = `state-label ${mode}`;
+  $("#state-label").textContent = healthy ? "RECORDING" : live ? "DEGRADED" : "STOPPED";
   $("#service-detail").textContent = healthy
-    ? "Camera, recorder, and local dashboard are responding."
-    : serviceLive ? "The recorder is running, but one or more checks require attention." : "The CCTV service is not recording. Start it when ready.";
+    ? "camera online · recorder responding"
+    : live ? "recorder running · a health check failed" : "recording stopped · pi still powered";
 
-  markStage("camera", data.camera, data.camera ? "Connected" : "Missing");
-  markStage("recorder", serviceLive && data.dashboard, serviceLive ? (data.dashboard ? "Responding" : "UI unavailable") : "Stopped");
-  markStage("storage", data.disk.free >= 8 * 1024 ** 3, `${formatBytes(data.disk.free)} free`);
-  const timersGood = Object.values(data.timers).every((value) => value === "active");
-  markStage("retention", timersGood, timersGood ? "Timers active" : "Timer fault");
+  const power = $("#power-button");
+  power.disabled = state.busy;
+  power.dataset.mode = live ? "stop" : "start";
+  power.className = `cmd power ${live ? "stop" : "start"}`;
+  power.querySelector("span").textContent = live ? "stop recording" : "start recording";
+
+  const diskUsed = 1 - data.disk.free / (data.disk.total || 1);
+  const memTotal = data.memory.MemTotal || 0;
+  const memUsed = memTotal ? 1 - (data.memory.MemAvailable || 0) / memTotal : 0;
+  const storageOk = data.disk.free >= 8 * GIB;
+  const timerValues = Object.values(data.timers);
+  const timersUp = timerValues.filter((value) => value === "active").length;
+  const timersOk = timersUp === timerValues.length;
+  const powerOk = data.power === "throttled=0x0";
+
+  metric("#m-camera", data.camera ? "online" : "MISSING", data.camera ? "" : "bad");
+  metric("#m-power", powerOk ? "ok" : escapeHtml(data.power.replace("throttled=", "")), powerOk ? "" : "warn");
+  metric("#m-temp", escapeHtml(data.temperature));
+  metric("#m-timers", `${timersUp}/${timerValues.length}`, timersOk ? "" : "bad");
+  metric("#m-disk", `${bar(diskUsed)} ${formatBytes(data.disk.free)} free / ${formatBytes(data.disk.total)}`, storageOk ? "" : "bad");
+  metric("#m-mem", `${bar(memUsed)} ${formatBytes(data.memory.MemAvailable || 0)} free / ${formatBytes(memTotal)}`, memUsed > .9 ? "warn" : "");
+  metric("#m-uptime", formatDuration(data.uptime));
+  metric("#m-restarts", escapeHtml(data.service.restarts || "0"), Number(data.service.restarts) > 0 ? "warn" : "");
+  metric("#m-quarantine", `${plural(data.quarantine.count, "file")} · ${formatBytes(data.quarantine.bytes)}`);
+
   const warnings = [];
-  if (data.power !== "throttled=0x0") warnings.push(["Power warning", `${data.power}. Undervoltage can corrupt recordings or stop USB devices; software cannot repair the power supply.`]);
-  if (!data.camera) warnings.push(["Camera missing", "Check the camera USB connection and power before restarting services."]);
-  if (data.disk.free < 8 * 1024 ** 3) warnings.push(["Storage reserve", "Free space is below 8 GiB. Run cleanup and move recordings off the microSD."]);
-  if (!timersGood) warnings.push(["Timer fault", "One or more health, retention, or quarantine timers are not active."]);
-  const warningIcons = { "Power warning": "bolt", "Camera missing": "camera", "Storage reserve": "storage", "Timer fault": "clock" };
-  $("#alerts").innerHTML = warnings.map(([title, copy]) => `<div class="alert"><strong>${icon(warningIcons[title] || "heartbeat")}${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></div>`).join("");
+  if (!data.camera) warnings.push(["bad", "CAM", "camera not detected: check the USB cable, then restart"]);
+  if (!storageOk) warnings.push(["bad", "DISK", "under 8G free: run cleanup or move recordings off the card"]);
+  if (!timersOk) warnings.push(["bad", "TIMERS", "a health, cleanup, or quarantine timer is not active"]);
+  if (!powerOk) warnings.push(["", "PWR", `${data.power}: undervoltage can corrupt recordings; check the supply`]);
+  const alerts = $("#alerts");
+  alerts.textContent = "";
+  warnings.forEach(([tone, title, copy]) => {
+    const row = document.createElement("div");
+    row.className = `alert ${tone}`;
+    const label = document.createElement("b");
+    label.textContent = `!! ${title}`;
+    const text = document.createElement("span");
+    text.textContent = copy;
+    row.append(label, text);
+    alerts.append(row);
+  });
 
-  const power = $("#diag-power");
-  power.textContent = data.power === "throttled=0x0" ? "Normal · throttled=0x0" : `Attention · ${data.power}`;
-  power.className = data.power === "throttled=0x0" ? "good" : "warning";
-  $("#diag-temp").textContent = data.temperature;
-  $("#diag-storage").textContent = `${formatBytes(data.disk.free)} of ${formatBytes(data.disk.total)}`;
-  $("#diag-memory").textContent = `${formatBytes(data.memory.MemAvailable || 0)} of ${formatBytes(data.memory.MemTotal || 0)}`;
-  $("#diag-restarts").textContent = data.service.restarts || "0";
-  $("#diag-uptime").textContent = formatDuration(data.uptime);
-  $("#diag-health").textContent = timersGood ? "All timers active" : Object.entries(data.timers).map(([name, value]) => `${name}: ${value}`).join(" · ");
-  $("#diag-quarantine").textContent = `${data.quarantine.count} files · ${formatBytes(data.quarantine.bytes)}`;
-  const quickPower = $("#quick-power-button");
-  quickPower.disabled = state.busy;
-  quickPower.dataset.mode = serviceLive ? "stop" : "start";
-  quickPower.className = `power-control ${serviceLive ? "stop" : "start"}`;
-  quickPower.querySelector("span").textContent = serviceLive ? "Turn CCTV off" : "Turn CCTV on";
-  $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString([], { hour12: true })}`;
-  renderQuarantine(data.quarantine);
+  $("#quarantine-banner").hidden = data.quarantine.count === 0;
+  $("#quarantine-count").textContent = `${plural(data.quarantine.count, "file")} in quarantine · auto-erased after 24h`;
+  $("#last-updated").textContent = `sync ${hms(new Date())}`;
 }
 
 function escapeHtml(value) {
@@ -134,77 +174,98 @@ function escapeHtml(value) {
   return element.innerHTML;
 }
 
-function escapeAttr(value) {
-  return escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-}
-
-function icon(name) {
-  return `<svg class="icon" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
-}
-
 async function refreshStatus() {
-  if (state.busy || $("#app-view").hidden) return;
+  if (state.busy || !appVisible()) return;
   try { renderStatus(await api("/api/status")); }
   catch (error) {
-    $("#header-dot").className = "status-dot degraded";
-    $("#header-state").textContent = "Control link unavailable";
+    $("#header-state").className = "tag degraded";
+    $("#header-state").textContent = "▲ LINK";
     toast(error.message, true);
   }
+}
+
+function cell(className, content) {
+  const td = document.createElement("td");
+  td.className = className;
+  if (typeof content === "string") td.textContent = content;
+  else td.append(...content);
+  return td;
+}
+
+function glyphButton(tag, cls, glyph, label) {
+  const element = document.createElement(tag);
+  element.className = `ib ${cls}`;
+  element.title = label;
+  element.setAttribute("aria-label", label);
+  element.textContent = `${glyph}︎`;
+  return element;
+}
+
+function renderMore() {
+  const fragment = document.createDocumentFragment();
+  state.items.slice(state.shown, state.shown + PAGE).forEach((item, offset) => {
+    const index = state.shown + offset;
+    const when = new Date(item.modified * 1000);
+    const row = document.createElement("tr");
+    row.dataset.index = index;
+    const file = cell("f", item.name);
+    file.title = item.relative;
+    const play = glyphButton("button", "", "▶", "Play");
+    play.type = "button";
+    play.dataset.play = index;
+    const download = glyphButton("a", "", "↓", "Download");
+    download.href = `/media/${encodeURIComponent(item.id)}`;
+    download.download = item.name;
+    const remove = glyphButton("button", "del", "✕", "Move to quarantine");
+    remove.type = "button";
+    remove.dataset.remove = index;
+    row.append(cell("d", ymd(when)), cell("t", hms(when)), file, cell("n", formatBytes(item.bytes)), cell("n a", [play, download, remove]));
+    fragment.append(row);
+  });
+  $("#recording-list").append(fragment);
+  state.shown = Math.min(state.shown + PAGE, state.items.length);
+  $("#more-button").hidden = state.shown >= state.items.length;
+  $("#more-count").textContent = state.items.length ? `showing ${state.shown}/${state.items.length}` : "";
 }
 
 async function refreshRecordings() {
   try {
     const data = await api("/api/recordings");
-    $("#recording-summary").textContent = `${data.total} recording${data.total === 1 ? "" : "s"} · ${formatBytes(data.bytes)}${data.limited ? " · showing newest 250" : ""}`;
-    const list = $("#recording-list");
-    list.textContent = "";
-    data.items.forEach((item) => {
-      const row = document.createElement("li");
-      const mediaUrl = `/media/${encodeURIComponent(item.id)}`;
-      row.innerHTML = `
-        <time class="recording-time" datetime="${new Date(item.modified * 1000).toISOString()}">${escapeHtml(formatDate(item.modified))}</time>
-        <span class="recording-name" title="${escapeAttr(item.relative)}">${escapeHtml(item.name)}</span>
-        <span class="recording-size">${escapeHtml(formatBytes(item.bytes))}</span>
-        <span class="recording-actions">
-          <a class="recording-action primary" href="${mediaUrl}" target="_blank" rel="noopener">${icon("play")}<span>Play</span></a>
-          <a class="recording-action" href="${mediaUrl}" download="${escapeAttr(item.name)}">${icon("download")}<span>Download</span></a>
-          <button class="recording-action remove" type="button" data-id="${escapeAttr(item.id)}" data-name="${escapeAttr(item.name)}">${icon("quarantine")}<span>Quarantine</span></button>
-        </span>`;
-      list.append(row);
-    });
+    $("#recording-summary").textContent = `${plural(data.total, "file")} · ${formatBytes(data.bytes)}${data.limited ? ` · newest ${data.items.length}` : ""}`;
+    state.items = data.items;
+    state.shown = 0;
+    state.selected = -1;
+    $("#recording-list").textContent = "";
+    renderMore();
     $("#empty-recordings").hidden = data.items.length !== 0;
+    $("#recording-table").hidden = data.items.length === 0;
   } catch (error) { toast(error.message, true); }
-}
-
-function renderQuarantine(quarantine) {
-  const banner = $("#quarantine-banner");
-  banner.hidden = quarantine.count === 0;
-  $("#quarantine-count").textContent = `${quarantine.count} recording${quarantine.count === 1 ? "" : "s"} in quarantine · ${formatBytes(quarantine.bytes)}`;
 }
 
 async function refreshAll() { await Promise.all([refreshStatus(), refreshRecordings()]); }
 
-async function action(name, label) {
+async function run(label, request, settleMs = 800) {
   setBusy(true, label);
   try {
-    const result = await api("/api/action", { method: "POST", body: JSON.stringify({ action: name }) });
+    const result = await request();
     toast(result.message);
-    await new Promise((resolve) => setTimeout(resolve, name === "restart" || name === "start" ? 12000 : 1200));
+    await new Promise((resolve) => setTimeout(resolve, settleMs));
   } catch (error) { toast(error.message, true); }
   finally { setBusy(false); await refreshAll(); }
 }
 
-function askConfirm({ title, copy, phrase = "", confirmLabel = "Confirm", callback }) {
-  const dialog = $("#confirm-dialog");
+const post = (path, body = {}) => () => api(path, { method: "POST", body: JSON.stringify(body) });
+const action = (name, label) => run(label, post("/api/action", { action: name }), name === "restart" || name === "start" ? 12000 : 1200);
+
+function askConfirm({ title, copy, phrase = "", confirmLabel = "confirm", callback }) {
   $("#confirm-title").textContent = title;
   $("#confirm-copy").textContent = copy;
   $("#confirm-input").value = "";
-  $("#confirm-input").hidden = !phrase;
   $("#confirm-label").hidden = !phrase;
-  $("#confirm-label").textContent = phrase ? `Type “${phrase}” to continue` : "";
+  $("#confirm-label span").textContent = phrase ? `type "${phrase}" to continue` : "";
   $("#confirm-submit").textContent = confirmLabel;
   state.pendingConfirm = { phrase, callback };
-  dialog.showModal();
+  $("#confirm-dialog").showModal();
   (phrase ? $("#confirm-input") : $("#confirm-submit")).focus();
 }
 
@@ -214,12 +275,62 @@ $("#confirm-form").addEventListener("submit", (event) => {
   if (!pending) return;
   if (pending.phrase && $("#confirm-input").value !== pending.phrase) {
     event.preventDefault();
-    toast("The confirmation phrase does not match", true);
+    toast("confirmation phrase does not match", true);
     return;
   }
   state.pendingConfirm = null;
   queueMicrotask(pending.callback);
 });
+
+// The player element is created on open and destroyed on close so no video stays buffered in memory.
+function openPlayer(item) {
+  if (!item) return;
+  const media = document.createElement(item.kind === "image" ? "img" : "video");
+  media.src = `/media/${encodeURIComponent(item.id)}`;
+  if (item.kind === "image") media.alt = item.name;
+  else { media.controls = true; media.autoplay = true; media.preload = "metadata"; }
+  $("#player-body").replaceChildren(media);
+  const when = new Date(item.modified * 1000);
+  $("#player-title").textContent = `${ymd(when)} ${hms(when)} · ${item.name}`;
+  $("#player-dialog").showModal();
+}
+
+$("#player-dialog").addEventListener("close", () => {
+  const video = $("#player-body video");
+  if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
+  $("#player-body").replaceChildren();
+});
+$("#player-close").addEventListener("click", () => $("#player-dialog").close());
+
+function confirmQuarantine(item) {
+  if (!item) return;
+  askConfirm({
+    title: "move to quarantine?",
+    copy: `${item.name} can be restored for 24h before it is erased.`,
+    confirmLabel: "move",
+    callback: () => run("moving to quarantine", post("/api/recordings/quarantine", { id: item.id }), 0),
+  });
+}
+
+function select(index) {
+  const rows = $("#recording-list").children;
+  if (!rows.length) return;
+  rows[state.selected]?.classList.remove("selected");
+  state.selected = Math.min(Math.max(index, 0), rows.length - 1);
+  rows[state.selected].classList.add("selected");
+  rows[state.selected].scrollIntoView({ block: "nearest" });
+}
+
+$("#recording-list").addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  const row = event.target.closest("tr");
+  if (row) select(Number(row.dataset.index));
+  if (!button) return;
+  if (button.dataset.play !== undefined) openPlayer(state.items[Number(button.dataset.play)]);
+  else confirmQuarantine(state.items[Number(button.dataset.remove)]);
+});
+
+$("#more-button").addEventListener("click", renderMore);
 
 $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -230,72 +341,82 @@ $("#login-form").addEventListener("submit", async (event) => {
     const result = await api("/api/login", { method: "POST", body: JSON.stringify({ username: $("#username").value, password: $("#password").value }) });
     state.csrf = result.csrf;
     showApp();
-  } catch (error) { $("#login-error").textContent = error.message; }
+  } catch (error) { $("#login-error").textContent = `! ${error.message}`; }
   finally { submit.disabled = false; }
 });
 
-$("#logout-button").addEventListener("click", async () => {
+async function logout() {
   try { await api("/api/logout", { method: "POST", body: "{}" }); } catch { /* session is closed locally */ }
   state.csrf = null;
   showLogin();
-});
-const confirmStop = () => askConfirm({ title: "Turn CCTV off?", copy: "This stops the camera and motion recording service. The control portal and Raspberry Pi stay powered on.", confirmLabel: "Turn CCTV off", callback: () => action("stop", "Turning CCTV off") });
-$("#quick-power-button").addEventListener("click", () => {
-  if ($("#quick-power-button").dataset.mode === "start") action("start", "Turning CCTV on");
-  else confirmStop();
-});
-$("#restart-button").addEventListener("click", () => action("restart", "Restarting recording line"));
-$("#retention-button").addEventListener("click", () => action("retention", "Running retention cleanup"));
-$("#refresh-button").addEventListener("click", refreshAll);
+}
 
-$("#recording-list").addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-id]");
-  if (!button) return;
+function togglePower() {
+  if ($("#power-button").disabled) return;
+  if ($("#power-button").dataset.mode === "start") { action("start", "starting recorder"); return; }
   askConfirm({
-    title: "Quarantine recording?",
-    copy: `${button.dataset.name} will leave the recording board now. You can restore it for 24 hours before permanent cleanup.`,
-    confirmLabel: "Move to quarantine",
-    callback: async () => {
-      setBusy(true, "Moving recording to quarantine");
-      try {
-        const result = await api("/api/recordings/quarantine", { method: "POST", body: JSON.stringify({ id: button.dataset.id }) });
-        toast(result.message);
-      } catch (error) { toast(error.message, true); }
-      finally { setBusy(false); await refreshAll(); }
-    },
+    title: "stop recording?",
+    copy: "The camera and motion recorder stop. The Raspberry Pi and this panel stay on.",
+    confirmLabel: "stop recording",
+    callback: () => action("stop", "stopping recorder"),
   });
-});
+}
 
-$("#delete-all-button").addEventListener("click", () => askConfirm({
-  title: "Quarantine every recording?",
-  copy: "Recording pauses briefly while every managed CCTV file is moved out of the archive. The service then returns to its previous state. You have 24 hours to restore the files.",
-  phrase: "QUARANTINE ALL RECORDINGS",
-  confirmLabel: "Quarantine everything",
-  callback: async () => {
-    setBusy(true, "Quarantining all recordings");
-    try {
-      const result = await api("/api/recordings/quarantine-all", { method: "POST", body: JSON.stringify({ confirmation: "QUARANTINE ALL RECORDINGS" }) });
-      toast(result.message);
-    } catch (error) { toast(error.message, true); }
-    finally { setBusy(false); await refreshAll(); }
-  },
-}));
+function quarantineAll() {
+  askConfirm({
+    title: "quarantine every recording?",
+    copy: "Recording pauses briefly while files are moved. They can be restored for 24h.",
+    phrase: "QUARANTINE ALL RECORDINGS",
+    confirmLabel: "quarantine all",
+    callback: () => run("quarantining all recordings", post("/api/recordings/quarantine-all", { confirmation: "QUARANTINE ALL RECORDINGS" }), 0),
+  });
+}
 
-$("#restore-all-button").addEventListener("click", async () => {
-  setBusy(true, "Restoring quarantined recordings");
-  try {
-    const result = await api("/api/quarantine/restore-all", { method: "POST", body: "{}" });
-    toast(result.message);
-  } catch (error) { toast(error.message, true); }
-  finally { setBusy(false); await refreshAll(); }
-});
-
-$("#load-logs-button").addEventListener("click", async () => {
-  $("#logs").textContent = "Loading…";
+async function toggleLogs() {
+  const panel = $("#log-panel");
+  if (!panel.hidden) { panel.hidden = true; $("#logs").textContent = ""; return; }
+  panel.hidden = false;
+  $("#logs").textContent = "loading…";
   try {
     const result = await api("/api/logs");
-    $("#logs").textContent = result.lines.join("\n") || "No recent service log entries.";
-  } catch (error) { $("#logs").textContent = error.message; }
+    $("#logs").textContent = result.lines.join("\n") || "-- no recent log entries --";
+  } catch (error) { $("#logs").textContent = `! ${error.message}`; }
+}
+
+$("#logout-button").addEventListener("click", logout);
+$("#power-button").addEventListener("click", togglePower);
+$("#restart-button").addEventListener("click", () => action("restart", "restarting recorder"));
+$("#retention-button").addEventListener("click", () => action("retention", "running cleanup"));
+$("#refresh-button").addEventListener("click", refreshAll);
+$("#delete-all-button").addEventListener("click", quarantineAll);
+$("#restore-all-button").addEventListener("click", () => run("restoring quarantine", post("/api/quarantine/restore-all"), 0));
+$("#load-logs-button").addEventListener("click", toggleLogs);
+$("#hide-logs-button").addEventListener("click", toggleLogs);
+
+const keys = {
+  s: togglePower,
+  r: () => !state.busy && action("restart", "restarting recorder"),
+  c: () => !state.busy && action("retention", "running cleanup"),
+  f: refreshAll,
+  l: toggleLogs,
+  q: logout,
+  Q: () => !state.busy && quarantineAll(),
+  j: () => select(state.selected + 1),
+  k: () => select(state.selected - 1),
+  ArrowDown: () => select(state.selected + 1),
+  ArrowUp: () => select(state.selected - 1),
+  Enter: () => openPlayer(state.items[state.selected]),
+  x: () => !state.busy && confirmQuarantine(state.items[state.selected]),
+};
+
+document.addEventListener("keydown", (event) => {
+  if (!appVisible() || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (document.querySelector("dialog[open]") || event.target.closest("input, textarea")) return;
+  if (event.key === "Enter" && event.target.closest("button, a")) return;
+  const handler = keys[event.key];
+  if (!handler) return;
+  event.preventDefault();
+  handler();
 });
 
 (async () => {

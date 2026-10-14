@@ -225,12 +225,26 @@ def read_first(command: list[str], fallback: str = "unknown") -> str:
         return fallback
 
 
+def temperature() -> str:
+    try:
+        milli = int(Path("/sys/class/thermal/thermal_zone0/temp").read_text().strip())
+        return f"{milli / 1000:.1f} °C"
+    except (OSError, ValueError):
+        return read_first(["/usr/bin/vcgencmd", "measure_temp"])
+
+
 def status() -> dict:
-    active = systemctl("is-active", "motioneye.service").stdout.strip()
-    enabled = systemctl("is-enabled", "motioneye.service").stdout.strip()
-    main_pid = read_first(["/usr/bin/systemctl", "show", "motioneye.service", "--property=MainPID", "--value"], "0")
-    restarts = read_first(["/usr/bin/systemctl", "show", "motioneye.service", "--property=NRestarts", "--value"], "0")
-    active_since = read_first(["/usr/bin/systemctl", "show", "motioneye.service", "--property=ActiveEnterTimestamp", "--value"], "")
+    # One systemctl call per question instead of one per property keeps polling cheap on the Pi.
+    props = {}
+    for line in run([
+        "/usr/bin/systemctl", "show", "motioneye.service",
+        "--property=ActiveState,UnitFileState,MainPID,NRestarts,ActiveEnterTimestamp",
+    ], timeout=8).stdout.splitlines():
+        key, _, value = line.partition("=")
+        props[key] = value.strip()
+    timer_names = ("cctv-health.timer", "cctv-retention.timer", "cctv-control-cleanup.timer")
+    timer_states = systemctl("is-active", *timer_names).stdout.split()
+    timers = {name: timer_states[i] if i < len(timer_states) else "unknown" for i, name in enumerate(timer_names)}
     dashboard = False
     try:
         with urllib.request.urlopen("http://127.0.0.1:8765/", timeout=3) as response:
@@ -252,19 +266,20 @@ def status() -> dict:
     except OSError:
         pass
     throttle = read_first(["/usr/bin/vcgencmd", "get_throttled"])
-    temperature = read_first(["/usr/bin/vcgencmd", "measure_temp"])
-    timers = {
-        name: systemctl("is-active", name).stdout.strip()
-        for name in ("cctv-health.timer", "cctv-retention.timer", "cctv-control-cleanup.timer")
-    }
     quarantine = quarantine_items()
     return {
         "ok": True,
-        "service": {"active": active, "enabled": enabled, "main_pid": main_pid, "restarts": restarts, "since": active_since},
+        "service": {
+            "active": props.get("ActiveState", "unknown"),
+            "enabled": props.get("UnitFileState", "unknown"),
+            "main_pid": props.get("MainPID", "0"),
+            "restarts": props.get("NRestarts", "0"),
+            "since": props.get("ActiveEnterTimestamp", ""),
+        },
         "camera": CAMERA.exists(),
         "dashboard": dashboard,
         "power": throttle,
-        "temperature": temperature,
+        "temperature": temperature(),
         "disk": {"total": usage.total, "used": usage.used, "free": usage.free},
         "memory": memory,
         "uptime": uptime,

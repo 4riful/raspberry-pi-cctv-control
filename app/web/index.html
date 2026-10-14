@@ -3,143 +3,106 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f3f5f3">
-  <title>CCTV Control</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0a0d0b">
+  <title>CCTV</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <svg class="icon-sprite" aria-hidden="true">
-    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
-    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9M7.1 5.8a8 8 0 1 0 9.8 0"/></symbol>
-    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7L20 14M20 8v6h-6"/></symbol>
-    <symbol id="i-clean" viewBox="0 0 24 24"><path d="m14 4 6 6-8.5 8.5a4.2 4.2 0 0 1-6 0 4.2 4.2 0 0 1 0-6zM4 20h16M12 6l6 6"/></symbol>
-    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M18.5 9a7 7 0 0 0-12-2.5L4 9m16 6-2.5 2.5A7 7 0 0 1 5.5 15"/></symbol>
-    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></symbol>
-    <symbol id="i-temp" viewBox="0 0 24 24"><path d="M10 14.8V5a2 2 0 0 1 4 0v9.8a4 4 0 1 1-4 0zM12 9v8"/></symbol>
-    <symbol id="i-storage" viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 14h16M16 17h1"/></symbol>
-    <symbol id="i-memory" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><path d="M9 9h6v6H9M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></symbol>
-    <symbol id="i-counter" viewBox="0 0 24 24"><path d="M7 7h10v10H7zM4 4v4m0-4h4M20 20v-4m0 4h-4"/></symbol>
-    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-    <symbol id="i-heartbeat" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></symbol>
-    <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 8h16v12H4zM3 4h18v4H3zM9 12h6"/></symbol>
-    <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></symbol>
-    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
-    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></symbol>
-    <symbol id="i-quarantine" viewBox="0 0 24 24"><path d="M5 7h14l-1 13H6zM4 4h16v3H4zM9 11l6 6m0-6-6 6"/></symbol>
-    <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 7M4 4v6h6M12 8v5l3 2"/></symbol>
-    <symbol id="i-signout" viewBox="0 0 24 24"><path d="M10 5H5v14h5M13 8l4 4-4 4m4-4H9"/></symbol>
-    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
-    <symbol id="i-file-video" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 12l5 3-5 3z"/></symbol>
-  </svg>
-  <a class="skip-link" href="#main">Skip to controls</a>
-
-  <main id="login-view" class="login-shell" aria-labelledby="login-title">
-    <section class="login-panel">
-      <div class="login-mark" aria-hidden="true"><span></span><svg class="icon"><use href="#i-camera"/></svg></div>
-      <h1 id="login-title">CCTV Control</h1>
-      <p>Sign in to manage this recorder.</p>
-      <form id="login-form">
-        <label for="username">Username</label>
-        <input id="username" name="username" autocomplete="username" required>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <p id="login-error" class="form-error" role="alert"></p>
-        <button class="button primary wide" type="submit"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>Sign in</button>
-      </form>
-      <p class="private-note">Private network access only</p>
-    </section>
+  <main id="login-view" class="login" hidden>
+    <form id="login-form" class="term">
+      <p class="dim">CCTV CONTROL · private recorder</p>
+      <p class="dim">──────────────────────────────</p>
+      <label><span>login:</span><input id="username" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+      <label><span>password:</span><input id="password" name="password" type="password" autocomplete="current-password" required></label>
+      <p id="login-error" class="err" role="alert"></p>
+      <button class="cmd primary" type="submit">[ enter ] sign in</button>
+    </form>
   </main>
 
-  <div id="app-view" class="app-shell" hidden>
-    <header class="topbar">
-      <a href="#overview" class="brand" aria-label="CCTV Control"><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>CCTV Control</span></a>
-      <div class="topbar-status" aria-live="polite"><span id="header-dot" class="status-dot unknown"></span><span id="header-state">Checking</span></div>
-      <button id="logout-button" class="text-button" type="button"><svg class="icon" aria-hidden="true"><use href="#i-signout"/></svg><span>Sign out</span></button>
+  <div id="app-view" class="screen" hidden>
+    <header class="top">
+      <span class="brand">CCTV<span class="dim">://</span>recorder</span>
+      <span id="header-state" class="tag">····</span>
+      <span id="clock" class="dim clock"></span>
+      <button id="logout-button" class="key" type="button"><kbd>q</kbd>logout</button>
     </header>
 
-    <main id="main">
-      <section id="overview" class="overview" aria-labelledby="overview-title">
-        <div class="state-copy">
-          <div class="state-heading"><span id="state-lamp" class="state-lamp unknown" aria-hidden="true"></span><h1 id="overview-title">Checking recording</h1></div>
-          <p id="primary-state" class="visually-hidden" aria-live="polite">Checking</p>
-          <p id="service-detail">Connecting to the recorder…</p>
+    <section class="state" aria-live="polite">
+      <div class="state-main">
+        <span id="state-dot" class="lamp"></span>
+        <div>
+          <div id="state-label" class="state-label">CHECKING</div>
+          <div id="service-detail" class="dim">connecting to recorder…</div>
         </div>
-        <button id="quick-power-button" class="power-control stop" type="button">
-          <svg class="icon" aria-hidden="true"><use href="#i-power"/></svg>
-          <span>Turn CCTV off</span>
-          <small>Raspberry Pi stays on</small>
-        </button>
-        <ul class="essential-status" aria-label="Essential CCTV status">
-          <li data-stage="camera"><span class="status-pin"></span><span>Camera</span><strong id="stage-camera">Checking</strong></li>
-          <li data-stage="storage"><span class="status-pin"></span><span>Storage</span><strong id="stage-storage">Checking</strong></li>
-          <li data-stage="retention"><span class="status-pin"></span><span>Retention</span><strong id="stage-retention">Checking</strong></li>
-          <li data-stage="recorder" class="visually-hidden"><strong id="stage-recorder">Checking</strong></li>
-        </ul>
-        <div id="alerts" class="alerts" aria-live="polite"></div>
-      </section>
+      </div>
+      <button id="power-button" class="cmd power" type="button" disabled><kbd>s</kbd><span>…</span></button>
+    </section>
 
-      <section class="recordings" aria-labelledby="recordings-title">
-        <div class="section-heading">
-          <div><h2 id="recordings-title">Recent recordings</h2><p id="recording-summary">Loading…</p></div>
-          <button id="delete-all-button" class="text-button danger-text" type="button"><svg class="icon" aria-hidden="true"><use href="#i-quarantine"/></svg><span>Quarantine all</span></button>
-        </div>
-        <div id="quarantine-banner" class="quarantine-banner" hidden>
-          <div><strong id="quarantine-count">0 recordings in quarantine</strong><span>Automatically erased after 24 hours.</span></div>
-          <button id="restore-all-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-restore"/></svg>Restore all</button>
-        </div>
-        <ol id="recording-list" class="recording-list" aria-live="polite"></ol>
-        <div id="empty-recordings" class="empty-state" hidden>
-          <svg class="empty-icon icon" aria-hidden="true"><use href="#i-file-video"/></svg>
-          <strong>No recordings yet</strong>
-          <p>Completed motion events will appear here.</p>
-        </div>
-      </section>
+    <div id="alerts" class="alerts"></div>
 
-      <details class="maintenance">
-        <summary><span>System details</span><small>Diagnostics, recovery, and logs</small><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
-        <div class="maintenance-body">
-          <dl class="diagnostic-table">
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-bolt"/></svg>Power</dt><dd id="diag-power">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-temp"/></svg>Temperature</dt><dd id="diag-temp">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-storage"/></svg>Storage free</dt><dd id="diag-storage">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-memory"/></svg>Memory available</dt><dd id="diag-memory">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-counter"/></svg>Service restarts</dt><dd id="diag-restarts">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>System uptime</dt><dd id="diag-uptime">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-heartbeat"/></svg>Health checks</dt><dd id="diag-health">Checking</dd></div>
-            <div><dt><svg class="icon" aria-hidden="true"><use href="#i-archive"/></svg>Quarantine</dt><dd id="diag-quarantine">Checking</dd></div>
-          </dl>
-          <div class="maintenance-actions">
-            <button id="restart-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-restart"/></svg>Restart recorder</button>
-            <button id="retention-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-clean"/></svg>Run cleanup</button>
-            <button id="refresh-button" class="button secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Refresh</button>
-          </div>
-          <details class="log-panel">
-            <summary><svg class="icon" aria-hidden="true"><use href="#i-log"/></svg>Recent service log</summary>
-            <button id="load-logs-button" class="button secondary" type="button">Load log</button>
-            <pre id="logs">Logs load only when requested.</pre>
-          </details>
-        </div>
-      </details>
-    </main>
+    <h2 class="rule"><span>system</span><span id="last-updated" class="dim"></span></h2>
+    <dl class="metrics">
+      <div id="m-camera"><dt>CAM</dt><dd>—</dd></div>
+      <div id="m-power"><dt>PWR</dt><dd>—</dd></div>
+      <div id="m-temp"><dt>TEMP</dt><dd>—</dd></div>
+      <div id="m-timers"><dt>TIMERS</dt><dd>—</dd></div>
+      <div id="m-disk" class="span"><dt>DISK</dt><dd>—</dd></div>
+      <div id="m-mem" class="span"><dt>MEM</dt><dd>—</dd></div>
+      <div id="m-uptime"><dt>UPTIME</dt><dd>—</dd></div>
+      <div id="m-restarts"><dt>RESTARTS</dt><dd>—</dd></div>
+      <div id="m-quarantine" class="span"><dt>QUARANTINE</dt><dd>—</dd></div>
+    </dl>
 
-    <footer><span>Private CCTV control</span><span id="last-updated">Not yet updated</span></footer>
+    <div class="commands">
+      <button id="restart-button" class="key" type="button"><kbd>r</kbd>restart</button>
+      <button id="retention-button" class="key" type="button"><kbd>c</kbd>cleanup</button>
+      <button id="refresh-button" class="key" type="button"><kbd>f</kbd>refresh</button>
+      <button id="load-logs-button" class="key" type="button"><kbd>l</kbd>log</button>
+    </div>
+
+    <section id="log-panel" hidden>
+      <h2 class="rule"><span>service log</span><button id="hide-logs-button" class="key" type="button">hide</button></h2>
+      <pre id="logs"></pre>
+    </section>
+
+    <h2 class="rule"><span>recordings</span><span id="recording-summary" class="dim">loading…</span></h2>
+    <div id="quarantine-banner" class="line warn" hidden>
+      <span id="quarantine-count"></span>
+      <button id="restore-all-button" class="key" type="button">restore all</button>
+    </div>
+    <table id="recording-table" class="recs">
+      <thead><tr><th>DATE</th><th>TIME</th><th class="f">FILE</th><th class="n">SIZE</th><th class="n"><span class="sr">ACTIONS</span></th></tr></thead>
+      <tbody id="recording-list"></tbody>
+    </table>
+    <p id="empty-recordings" class="dim empty" hidden>-- no recordings yet; motion events will appear here --</p>
+    <div class="line">
+      <span id="more-count" class="dim"></span>
+      <button id="more-button" class="key" type="button" hidden>more</button>
+      <button id="delete-all-button" class="key danger" type="button"><kbd>Q</kbd>quarantine all</button>
+    </div>
+
+    <footer class="dim hints"><kbd>j</kbd><kbd>k</kbd> select · <kbd>enter</kbd> play · <kbd>x</kbd> quarantine · <kbd>s</kbd> start/stop</footer>
   </div>
 
   <dialog id="confirm-dialog" aria-labelledby="confirm-title">
-    <form method="dialog" id="confirm-form">
-      <h2 id="confirm-title">Confirm action</h2>
+    <form method="dialog" id="confirm-form" class="term">
+      <h2 id="confirm-title" class="warn-text"></h2>
       <p id="confirm-copy"></p>
-      <label id="confirm-label" for="confirm-input">Type the confirmation phrase</label>
-      <input id="confirm-input" autocomplete="off">
+      <label id="confirm-label" hidden><span></span><input id="confirm-input" autocomplete="off" spellcheck="false"></label>
       <div class="dialog-actions">
-        <button class="button secondary" value="cancel">Cancel</button>
-        <button id="confirm-submit" class="button danger" value="confirm">Confirm</button>
+        <button class="key" value="cancel"><kbd>esc</kbd>cancel</button>
+        <button id="confirm-submit" class="cmd danger" value="confirm">confirm</button>
       </div>
     </form>
   </dialog>
+
+  <dialog id="player-dialog" class="player" aria-label="Recording player">
+    <div class="player-head"><span id="player-title"></span><button id="player-close" class="key" type="button"><kbd>esc</kbd>close</button></div>
+    <div id="player-body"></div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
