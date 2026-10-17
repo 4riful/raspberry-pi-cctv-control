@@ -271,4 +271,8 @@ uninstall.sh         non-destructive removal
 
 ## License
 
-Copyright retained. No license is granted for redistribution unless one is added later.
+Licensed under the [MIT License](LICENSE). You may use, copy, modify, and
+distribute this project under its terms.
+
+Contributions, improvements, bug reports, and documentation updates are
+welcome. Feel free to open an issue or submit a pull request.
