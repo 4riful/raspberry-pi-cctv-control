@@ -271,4 +271,4 @@ uninstall.sh         non-destructive removal
 
 ## License
 
-Copyright retained. This private repository grants no redistribution rights unless a license is added later.
+Copyright retained. No license is granted for redistribution unless one is added later.
