@@ -5,7 +5,13 @@
 **A private, motion-triggered CCTV recorder for a Raspberry Pi and one USB webcam.**<br>
 Recordings stay on the Pi. Nothing is exposed to the Internet.
 
-<img src="https://cdn.simpleicons.org/raspberrypi/A22846" alt="Raspberry Pi" width="72">
+<p>
+  <img src="https://api.iconify.design/lucide/cctv.svg?color=%23A22846" alt="CCTV camera" width="72" height="72">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/raspberrypi/A22846" alt="Raspberry Pi" width="72" height="72">
+</p>
+
+<br>
 
 [![CI](https://github.com/4riful/raspberry-pi-cctv-control/actions/workflows/ci.yml/badge.svg)](https://github.com/4riful/raspberry-pi-cctv-control/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-c51a4a)
