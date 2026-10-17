@@ -13,3 +13,6 @@ screenshots/
 test-output/
 dist/
 .impeccable/review/
+
+# Machine-specific deployment history (addresses, hostnames, audit evidence)
+.local-archive/

@@ -5,13 +5,13 @@
 **A private, motion-triggered CCTV recorder for a Raspberry Pi and one USB webcam.**<br>
 Recordings stay on the Pi. Nothing is exposed to the Internet.
 
+<img src="docs/images/raspberry-pi-cctv-illustration.png" alt="Illustration of a Raspberry Pi CCTV system with a camera, local recording status, and private circuit paths" width="900">
+
 [![CI](https://github.com/4riful/raspberry-pi-cctv-control/actions/workflows/ci.yml/badge.svg)](https://github.com/4riful/raspberry-pi-cctv-control/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-c51a4a)
 ![OS](https://img.shields.io/badge/Debian-13%20Trixie-a81d33)
 ![Python](https://img.shields.io/badge/python-3.13-3776ab)
 ![Dependencies](https://img.shields.io/badge/web%20UI-zero%20dependencies-3ddc84)
-
-<img src="docs/images/console-desktop.png" alt="CCTV Control console on desktop: recording state, system metrics, and the recordings table" width="820">
 
 </div>
 
@@ -25,6 +25,10 @@ Recordings stay on the Pi. Nothing is exposed to the Internet.
 - **Act in one tap.** Turn recording on or off, restart, run cleanup, read the service log, or power off the Pi.
 - **Review footage.** Play in the browser, download, and delete safely: deletes go to a 24-hour quarantine you can restore from.
 - **Forget about it.** Health checks every 2 minutes, hourly age and free-space retention, and crash recovery through systemd.
+
+<div align="center">
+<img src="docs/images/console-desktop.png" alt="CCTV Control console on desktop: recording state, system metrics, and the recordings table" width="820">
+</div>
 
 <table>
 <tr>
