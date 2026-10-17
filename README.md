@@ -6,11 +6,11 @@
 Recordings stay on the Pi. Nothing is exposed to the Internet.
 
 <p>
-  <img src="https://api.iconify.design/lucide/cctv.svg?color=%23A22846" alt="CCTV camera" width="72" height="72">
+  <img src="https://api.iconify.design/lucide/cctv.svg?color=%23A22846" alt="CCTV camera" width="72" height="72" align="middle">
   &nbsp;&nbsp;
-  <img src="https://api.iconify.design/lucide/plus.svg?color=%238B949E" alt="plus" width="24" height="24">
+  <img src="https://api.iconify.design/lucide/plus.svg?color=%238B949E" alt="plus" width="24" height="24" align="middle">
   &nbsp;&nbsp;
-  <img src="https://cdn.simpleicons.org/raspberrypi/A22846" alt="Raspberry Pi" width="72" height="72">
+  <img src="https://cdn.simpleicons.org/raspberrypi/A22846" alt="Raspberry Pi" width="72" height="72" align="middle">
 </p>
 
 <br>
